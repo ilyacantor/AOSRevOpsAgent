@@ -37,12 +37,28 @@ class SalesforceConnector:
         if self.instance_url and self.refresh_token and self.client_id and self.client_secret:
             try:
                 print("🔐 Connecting to Salesforce using OAuth 2.0...")
+                import requests
+                
+                # Use refresh token to get access token
+                token_url = f"{self.instance_url}/services/oauth2/token"
+                response = requests.post(token_url, data={
+                    'grant_type': 'refresh_token',
+                    'client_id': self.client_id,
+                    'client_secret': self.client_secret,
+                    'refresh_token': self.refresh_token
+                })
+                
+                if response.status_code != 200:
+                    raise Exception(f"OAuth token refresh failed: {response.text}")
+                
+                token_data = response.json()
+                access_token = token_data['access_token']
+                instance_url = token_data.get('instance_url', self.instance_url)
+                
+                # Connect with access token
                 self.sf = Salesforce(
-                    instance_url=self.instance_url,
-                    session_id='',  # Will be obtained via refresh token
-                    client_id=self.client_id,
-                    client_secret=self.client_secret,
-                    refresh_token=self.refresh_token
+                    instance_url=instance_url,
+                    session_id=access_token
                 )
                 print("✅ Connected to Salesforce via OAuth")
                 return
@@ -236,7 +252,7 @@ class SalesforceConnector:
         current_time = time.time()
         return (current_time - self._health_cache_time) < self._health_cache_ttl
     
-    def get_cached_health(self) -> dict:
+    def get_cached_health(self) -> dict | None:
         """Get cached health without performing check"""
         return self._health_cache
     
@@ -244,7 +260,7 @@ class SalesforceConnector:
         """Check if Salesforce connection is healthy (cached to avoid blocking I/O)"""
         # Return cached result if still valid and not forcing
         if not force and self.is_health_cache_fresh():
-            return self._health_cache
+            return self._health_cache or {"healthy": False, "error": "No cache available"}
         
         # Perform actual health check
         current_time = time.time()
