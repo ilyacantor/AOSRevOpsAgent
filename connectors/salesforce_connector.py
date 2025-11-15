@@ -11,10 +11,18 @@ from connectors.exceptions import ConnectorConfigurationError
 
 class SalesforceConnector:
     def __init__(self, allow_mock=False):
+        # OAuth credentials (preferred)
+        self.instance_url = os.getenv('SALESFORCE_INSTANCE_URL', '')
+        self.refresh_token = os.getenv('SALESFORCE_REFRESH_TOKEN', '')
+        self.client_id = os.getenv('SALESFORCE_CLIENT_ID', '')
+        self.client_secret = os.getenv('SALESFORCE_CLIENT_SECRET', '')
+        
+        # Legacy username/password credentials (fallback)
         self.username = os.getenv('SALESFORCE_USERNAME', '')
         self.password = os.getenv('SALESFORCE_PASSWORD', '')
         self.security_token = os.getenv('SALESFORCE_SECURITY_TOKEN', '')
         self.domain = os.getenv('SALESFORCE_DOMAIN', 'test')  # 'test' for sandbox
+        
         self.allow_mock = allow_mock
         self.sf = None
         self.config_error = None
@@ -24,7 +32,27 @@ class SalesforceConnector:
         self._connect()
     
     def _connect(self):
-        """Establish connection to Salesforce"""
+        """Establish connection to Salesforce using OAuth or legacy credentials"""
+        # Try OAuth first (preferred method)
+        if self.instance_url and self.refresh_token and self.client_id and self.client_secret:
+            try:
+                print("🔐 Connecting to Salesforce using OAuth 2.0...")
+                self.sf = Salesforce(
+                    instance_url=self.instance_url,
+                    session_id='',  # Will be obtained via refresh token
+                    client_id=self.client_id,
+                    client_secret=self.client_secret,
+                    refresh_token=self.refresh_token
+                )
+                print("✅ Connected to Salesforce via OAuth")
+                return
+            except Exception as e:
+                error_msg = f"Salesforce OAuth connection error: {e}"
+                self.config_error = error_msg
+                print(f"⚠️  {error_msg}")
+                self.sf = None
+        
+        # Fall back to username/password method
         missing_vars = []
         if not self.username:
             missing_vars.append('SALESFORCE_USERNAME')
@@ -42,12 +70,14 @@ class SalesforceConnector:
             return
         
         try:
+            print("🔐 Connecting to Salesforce using username/password...")
             self.sf = Salesforce(
                 username=self.username,
                 password=self.password,
                 security_token=self.security_token,
                 domain=self.domain
             )
+            print("✅ Connected to Salesforce via username/password")
         except Exception as e:
             error_msg = f"Salesforce connection error: {e}"
             self.config_error = error_msg
