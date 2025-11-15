@@ -345,25 +345,25 @@ async def get_connector_details(
     elif connector_name == 'mongodb':
         capabilities = ["NoSQL Queries", "Usage Analytics", "Engagement Metrics", "Document Store"]
     
-    # Get sample data if requested and connector is healthy
+    # Get live data if requested and connector is healthy (up to 20 records)
     sample_data = None
     if include_sample and health and health.get('healthy'):
         try:
             if connector_name == 'salesforce':
-                result = dcl_instance.query('salesforce', query_str="SELECT Id, Name, StageName, Amount FROM Opportunity LIMIT 3")
-                sample_data = result[:3] if isinstance(result, list) else []
+                result = dcl_instance.query('salesforce', query_str="SELECT Id, Name, StageName, Amount FROM Opportunity LIMIT 20")
+                sample_data = result[:20] if isinstance(result, list) else []
             elif connector_name == 'supabase':
                 result = dcl_instance.query('supabase')
-                sample_data = result[:3] if isinstance(result, list) else []
+                sample_data = result[:20] if isinstance(result, list) else []
             elif connector_name == 'mongodb':
                 result = dcl_instance.query('mongodb')
                 if isinstance(result, dict):
                     sample_data = [result]
                 elif isinstance(result, list):
-                    sample_data = result[:3]
+                    sample_data = result[:20]
         except Exception as e:
-            # If sample data fails, just don't include it
-            print(f"Failed to fetch sample data for {connector_name}: {e}")
+            # If data fetch fails, just don't include it
+            print(f"Failed to fetch live data for {connector_name}: {e}")
             sample_data = None
     
     return ConnectorDetails(

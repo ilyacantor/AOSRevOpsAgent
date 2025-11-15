@@ -154,7 +154,7 @@ export const ConnectorDetailModal: React.FC<ConnectorDetailModalProps> = ({ conn
           >
             <div className="flex items-center gap-2">
               <Code className="w-4 h-4" />
-              Sample Data
+              Live Data
             </div>
           </button>
         </div>
@@ -276,7 +276,7 @@ export const ConnectorDetailModal: React.FC<ConnectorDetailModalProps> = ({ conn
             <div className="space-y-6">
               {details.sample_data && details.sample_data.length > 0 ? (
                 <Card>
-                  <h3 className="text-lg font-semibold text-white mb-4">Sample Records</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">Live Records from Instance</h3>
                   <div className="space-y-3">
                     {details.sample_data.map((record, index) => (
                       <div key={index} className="p-4 bg-bg-primary/50 rounded-lg border border-border-primary">
@@ -287,7 +287,7 @@ export const ConnectorDetailModal: React.FC<ConnectorDetailModalProps> = ({ conn
                     ))}
                   </div>
                   <p className="text-text-secondary text-sm mt-4">
-                    Showing {details.sample_data.length} sample record{details.sample_data.length !== 1 ? 's' : ''}
+                    Showing {details.sample_data.length} live record{details.sample_data.length !== 1 ? 's' : ''} from your instance (up to 20 max)
                   </p>
                 </Card>
               ) : (
@@ -296,8 +296,8 @@ export const ConnectorDetailModal: React.FC<ConnectorDetailModalProps> = ({ conn
                     <Code className="w-16 h-16 text-text-secondary mx-auto mb-4 opacity-50" />
                     <p className="text-text-secondary">
                       {details.health?.healthy
-                        ? 'No sample data available'
-                        : 'Sample data unavailable - connector not healthy'}
+                        ? 'No live data available'
+                        : 'Live data unavailable - connector not healthy'}
                     </p>
                   </div>
                 </Card>
