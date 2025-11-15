@@ -154,6 +154,18 @@ class ConnectorInfo(BaseModel):
     health: Optional[Dict[str, Any]] = None
     last_checked: Optional[str] = None
 
+class ConnectorDetails(BaseModel):
+    name: str
+    type: str
+    status: str
+    description: str
+    error: Optional[str] = None
+    health: Optional[Dict[str, Any]] = None
+    last_checked: Optional[str] = None
+    config_info: Dict[str, Any]
+    capabilities: List[str]
+    sample_data: Optional[List[Dict[str, Any]]] = None
+
 class OpportunityRecord(BaseModel):
     id: str
     name: str
@@ -267,6 +279,105 @@ async def get_connectors(force_check: bool = Query(default=False, description="F
         ))
     
     return connectors
+
+@app.get("/api/dcl/connectors/{connector_name}", response_model=ConnectorDetails)
+async def get_connector_details(
+    connector_name: str,
+    force_check: bool = Query(default=False, description="Force fresh health check"),
+    include_sample: bool = Query(default=True, description="Include sample data")
+):
+    """
+    Get detailed information about a specific connector including configuration,
+    health status, and optional sample data.
+    """
+    dcl_instance = get_dcl()
+    
+    # Check if connector exists
+    connectors = dcl_instance.list_connectors()
+    if connector_name not in connectors:
+        raise HTTPException(status_code=404, detail=f"Connector '{connector_name}' not found")
+    
+    meta = connectors[connector_name]
+    connector_instance = dcl_instance.connector_instances.get(connector_name)
+    
+    # Get health check
+    health = None
+    last_checked = None
+    if connector_instance and hasattr(connector_instance, 'check_health'):
+        if hasattr(connector_instance, 'is_health_cache_fresh') and not force_check:
+            if connector_instance.is_health_cache_fresh():
+                health = connector_instance.get_cached_health()
+                last_checked = datetime.fromtimestamp(connector_instance._health_cache_time).isoformat()
+            else:
+                health = connector_instance.check_health(force=force_check)
+                last_checked = datetime.fromtimestamp(connector_instance._health_cache_time).isoformat()
+        else:
+            health = connector_instance.check_health(force=force_check)
+            if hasattr(connector_instance, '_health_cache_time'):
+                last_checked = datetime.fromtimestamp(connector_instance._health_cache_time).isoformat()
+    
+    # Build configuration info (sanitized - no secrets)
+    config_info = {}
+    if connector_instance:
+        if connector_name == 'salesforce':
+            config_info = {
+                "authentication": "OAuth 2.0" if connector_instance.instance_url else "Username/Password",
+                "instance_configured": bool(connector_instance.instance_url),
+                "domain": connector_instance.domain if hasattr(connector_instance, 'domain') else None,
+            }
+        elif connector_name == 'supabase':
+            config_info = {
+                "url_configured": bool(connector_instance.url),
+                "table": "salesforce_health_scores"
+            }
+        elif connector_name == 'mongodb':
+            config_info = {
+                "database": connector_instance.database if hasattr(connector_instance, 'database') else None,
+                "connection_configured": connector_instance.uri is not None if hasattr(connector_instance, 'uri') else False
+            }
+    
+    # Define capabilities
+    capabilities = []
+    if connector_name == 'salesforce':
+        capabilities = ["SOQL Queries", "Opportunity Management", "Account Data", "CRM Analytics"]
+    elif connector_name == 'supabase':
+        capabilities = ["PostgreSQL Queries", "Health Scores", "Customer Metrics", "Real-time Data"]
+    elif connector_name == 'mongodb':
+        capabilities = ["NoSQL Queries", "Usage Analytics", "Engagement Metrics", "Document Store"]
+    
+    # Get sample data if requested and connector is healthy
+    sample_data = None
+    if include_sample and health and health.get('healthy'):
+        try:
+            if connector_name == 'salesforce':
+                result = dcl_instance.query('salesforce', query_str="SELECT Id, Name, StageName, Amount FROM Opportunity LIMIT 3")
+                sample_data = result[:3] if isinstance(result, list) else []
+            elif connector_name == 'supabase':
+                result = dcl_instance.query('supabase')
+                sample_data = result[:3] if isinstance(result, list) else []
+            elif connector_name == 'mongodb':
+                result = dcl_instance.query('mongodb')
+                if isinstance(result, dict):
+                    sample_data = [result]
+                elif isinstance(result, list):
+                    sample_data = result[:3]
+        except Exception as e:
+            # If sample data fails, just don't include it
+            print(f"Failed to fetch sample data for {connector_name}: {e}")
+            sample_data = None
+    
+    return ConnectorDetails(
+        name=connector_name,
+        type=meta.get('type', 'Unknown'),
+        status=meta.get('status', 'Unknown'),
+        description=meta.get('description', 'No description'),
+        error=meta.get('error'),
+        health=health,
+        last_checked=last_checked,
+        config_info=config_info,
+        capabilities=capabilities,
+        sample_data=sample_data
+    )
 
 @app.post("/api/workflows/pipeline-health")
 async def run_pipeline_health(
