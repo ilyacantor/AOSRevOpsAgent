@@ -2,248 +2,68 @@
 
 ## Overview
 
-This is a real-time revenue operations monitoring application that integrates CRM data (Salesforce), customer health metrics (Supabase/PostgreSQL), and user engagement data (MongoDB) through a unified interface. The application provides workflow-based analytics for CRM integrity validation (BANT framework) and pipeline health monitoring, with built-in alerting capabilities via Slack.
-
-The system uses a Data Connectivity Layer (DCL) architecture that acts as a router and abstraction layer, allowing workflows to query different data sources without knowing the underlying connection details or query languages. This creates a clean separation between data access and business logic.
+This project is a real-time revenue operations monitoring application designed to unify CRM (Salesforce), customer health (Supabase/PostgreSQL), and user engagement (MongoDB) data. It provides workflow-based analytics for CRM integrity validation (BANT framework) and pipeline health monitoring, including Slack-based alerting. The system utilizes a Data Connectivity Layer (DCL) to abstract data access, enabling flexible integration and separation of concerns between business logic and data sources. The application aims to provide a comprehensive, unified view of pipeline health and CRM data integrity to drive informed business decisions.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes
-
-**November 1, 2025 - Platform Views Disabled (UX Fix)**
-- **Issue**: Startup 500 errors when platform endpoints unavailable (all return 404)
-- **Root cause**: Platform attempt (404) → backend fallback (timing issue) → 500 error → retry works
-- **Fix**: Disabled `VITE_USE_PLATFORM_VIEWS` flag in `frontend/.env` to avoid platform attempts
-- **Impact**: Clean startup with no errors - app goes directly to backend API via Vite proxy
-- **Status**: Platform integration code preserved and ready; flag can be re-enabled when AOS endpoints are deployed
-- **Result**: No more startup errors, smooth data loading on first attempt
-
-**October 31, 2025 - Agent-Kit Platform Integration (Feature Flagged)**
-- **Architecture**: Added AosClient library supporting platform Views/Intents integration via agent-kit
-- **Feature Flag**: `VITE_USE_PLATFORM_VIEWS` environment variable enables staged migration (default: OFF)
-- **Data Adapters**: Created normalization layer transforming platform responses to existing UI shapes
-  - `adaptOpportunitiesResponse()` maps platform opportunities to `BackendResponse` format
-  - `adaptValidationsResponse()` maps platform accounts to `ValidationResponse` format
-- **Platform Fetchers**: `fetchPipelineHealth()` and `fetchCrmIntegrity()` use AosClient when flag enabled
-- **Intent Helpers**: `sendIntent()` with idempotency key support for alert operations
-- **Debug Tools**: `DebugTracePanel` component displays trace IDs in development builds only
-- **Error Handling**: Non-blocking toasts for all platform errors, preserving user experience
-- **UI Integration**: Dashboard and Operations pages accept optional custom fetchers from useFetch hook
-- **Zero Regressions**: All existing UI (navbar, dropdowns, charts) preserved; legacy axios workflows active by default
-- **TypeScript**: Fixed verbatimModuleSyntax compliance with type-only imports throughout
-- **Files Added**: `aosClient.ts`, `adapters.ts`, `platformFetchers.ts`, `intentHelpers.ts`, `DebugTracePanel.tsx`
-- **Architect Approved**: PASS with recommendation to add smoke tests for both flag states
-
-**October 31, 2025 - Critical Supabase Connection Fix**
-- **Fixed table name mismatch**: Changed `customer_health` → `salesforce_health_scores` throughout codebase
-- **Root cause**: Code queried non-existent `customer_health` table, causing all health scores to return 0
-- **Impact**: Dashboard now displays real health data (average 75.3, range 15-88 across 16 opportunities)
-- **Files updated**: `workflows/pipeline_health.py`, `connectors/supabase_connector.py`
-- **Result**: Scatter plot now shows meaningful patterns - opportunities spread across both health (15-88) and risk (78-100) dimensions
-- **Remaining issue**: MongoDB Atlas connection still unavailable (SSL handshake errors), system uses defaults with warning banners
-
-**October 30, 2025 - Complete Feature Restoration (Dashboard & Operations)**
-- **Dashboard (Pipeline Health)**: Restored full feature parity with Streamlit version
-  - Added Risk Analysis charts: Health vs Risk scatter plot and Risk Score Distribution histogram
-  - Added missing metrics: High Risk Deals and Avg Risk Score (now 8 total metrics)
-  - Implemented Alert Management system with Slack integration for high-risk deals
-  - Added interactive filtering: "Show stalled deals only" checkbox and risk score slider (0-100)
-  - Enhanced opportunities table with "Is Stalled" badges and 7 total columns
-  - All charts use Recharts with autonomOS dark theme (#0A2540 background)
-- **Operations (CRM Integrity)**: Restored full feature parity with Streamlit version
-  - Added Validation Analysis charts: Risk Level Distribution pie chart and Validation Status by Stage stacked bar
-  - Fixed metrics: Total Opportunities, Valid Opportunities (with % badge), High Risk (replaced "Invalid")
-  - Implemented Risk Level filter with multiselect checkboxes (HIGH, MEDIUM, LOW)
-  - Enhanced validation table with 7 columns: Account Name, Amount, Risk Level badges, etc.
-  - Added Human-in-the-Loop Escalation section with Slack alert integration
-  - Implemented expandable escalation cards showing issues and action required
-  - Updated backend to include risk_level, account_name, and amount in validation results
-- Both pages now have 100% feature completeness compared to original Streamlit implementation
-- All interactive features tested and verified via end-to-end Playwright tests
-
-**October 30, 2025 - Frontend Migration to React**
-- Migrated from Streamlit to modern React 19 + Vite 7 + TypeScript stack
-- Created complete React component library (Navbar, Card, MetricCard, LoadingSpinner)
-- Implemented three main pages: Dashboard, Operations, Connectivity
-- Upgraded to Tailwind CSS v4 with CSS-based @theme configuration
-- Fixed Vite 7 allowedHosts configuration for Replit deployment (`.replit.dev`, `.repl.co`)
-- Configured FastAPI backend on port 8000 with workflow endpoints
-- Configured Vite development server on port 5000 with API proxy
-- Updated PostCSS to use `@tailwindcss/postcss` plugin for v4 compatibility
-- Applied autonomOS design system across entire UI (black background, teal accents, enterprise blue cards)
-
-## UI Design & Color Palette
-
-**Design System: AutonomOS Platform Theme**
-
-The application uses a dark, professional, and futuristic aesthetic with consistent teal accents matching the autonomOS platform design system.
-
-**Primary Colors**
-- **Teal/Cyan (Primary Accent)**: `#0BCAD9` - Icons, highlights, interactive elements, hover states, borders, active navigation items
-- **Black (Main Background)**: `#000000` - Primary page background and navigation bar
-- **Enterprise Data Blue**: `#0A2540` - Card backgrounds, chart backgrounds, metric containers
-- **Blue Border**: `#1E4A6F` - Card borders, container outlines
-
-**Text Colors**
-- **Primary Text**: `#FFFFFF` - Headers, titles, main content
-- **Secondary Text**: `#A0AEC0` - Subtitles, descriptions, labels
-- **Accent Text**: `#0BCAD9` - Links, highlighted text, active states
-
-**Visual Effects**
-- **Glow Shadows**: Teal shadows with opacity (e.g., `0 0 12px rgba(11, 202, 217, 0.3)`) on active/hover states
-- **Subtle Shadows**: Light teal shadows on cards (e.g., `0 4px 12px rgba(11, 202, 217, 0.1)`)
-- **Hover Transitions**: All interactive elements use smooth transitions (`transition: all 0.2s ease`)
-- **Border Highlights**: Interactive elements show teal borders on hover
-
-**Navigation Design**
-- Horizontal top navigation bar (no sidebar)
-- Three main sections: Dashboard (Pipeline Health), Operations (CRM Integrity), Connectivity (DCL Demo)
-- Active tab indicators with teal accent color and glow effect
-- Sticky navigation with shadow for depth
-
-**Layout Characteristics**
-- Dark mode throughout
-- Clean, spacious layouts with proper padding
-- Minimalist design focused on data visualization
-- Mobile-first responsive design principles
-- Consistent use of teal accents to guide user attention to interactive elements
-
 ## System Architecture
 
 ### Core Architecture Pattern
 
-**Data Connectivity Layer (DCL)**
-- **Problem**: Applications need to query multiple data sources (Salesforce, PostgreSQL, MongoDB) with different query languages and connection patterns
-- **Solution**: Unified connector registry pattern where data sources register query functions with the DCL core
-- **Design**: `dcl_core.py` maintains a registry of named connectors, each providing a standardized `query()` interface
-- **Benefits**: Workflows remain agnostic to data source implementation; connectors can be swapped or mocked without changing business logic
+The core architecture is built around a **Data Connectivity Layer (DCL)**. This DCL acts as a universal router and abstraction layer, using a Registry Pattern to manage various data connectors (Salesforce, Supabase, MongoDB). Connectors register with the DCL, providing a standardized `query(params)` interface and metadata. Workflows then query the DCL, which routes requests to the appropriate connector, translating generic parameters into source-specific query languages. This design ensures clean separation between data access and business logic, allows for graceful degradation with mock data fallbacks, and simplifies the integration of new data sources.
 
 ### Frontend Architecture
 
-**React SPA** (`frontend/`)
-- Modern single-page application built with React 19, Vite 7, and TypeScript
-- Three main pages: Dashboard (Pipeline Health), Operations (CRM Integrity), Connectivity (DCL Demo)
-- Component library: Navbar, Card, MetricCard, LoadingSpinner
-- State management via React hooks (useState, useEffect, useMemo)
-- Data fetching with custom useFetch hook and Axios
-- Responsive design with Tailwind CSS v4 (CSS-based theme configuration)
-- Interactive charts using Recharts library
-- React Router v7 for client-side routing
-
-**Legacy Streamlit Interface** (`app.py`) - Deprecated
-- Original Streamlit dashboard remains for reference
-- Replaced by modern React frontend for better performance and UX
-- Session state management for DCL instance and connector initialization
-- Uses Plotly for data visualization (charts and graphs)
+The frontend is a modern **React Single Page Application (SPA)** built with React 19, Vite 7, and TypeScript. It features three main pages: Dashboard (Pipeline Health), Operations (CRM Integrity), and Connectivity (DCL Demo). The UI incorporates a custom component library, state management via React hooks, data fetching with a `useFetch` hook and Axios, and responsive design with Tailwind CSS v4. Charts are rendered using the Recharts library, and client-side routing is handled by React Router v7. The application adheres to the autonomOS Platform Theme, utilizing a dark aesthetic with teal accents for a professional, futuristic look.
 
 ### Backend Architecture
 
-**Connector Pattern**
-- Each data source implements a connector class with a standardized query interface
-- Connectors handle authentication, connection management, and error fallback
-- Mock data fallback when external services are unavailable
-- Connector factory functions return both query function and metadata
-
-**Workflow Pattern**
-- Business logic encapsulated in workflow classes
-- Each workflow receives DCL instance as dependency
-- Workflows orchestrate multi-source data queries and joins
-- Two primary workflows:
-  - `CRMIntegrityWorkflow`: BANT validation with stage-based rules
-  - `PipelineHealthWorkflow`: Multi-source data joining for pipeline analysis
+The backend implements **Connector and Workflow Patterns**. Each data source has a dedicated connector class that manages authentication, connection, and provides a standardized query interface with mock data fallbacks. Workflows encapsulate business logic, orchestrating multi-source data queries and joins through the DCL. Key workflows include `CRMIntegrityWorkflow` (BANT validation) and `PipelineHealthWorkflow` (multi-source pipeline analysis).
 
 ### Data Storage Solutions
 
-**Multi-source Strategy**
-- **Salesforce (CRM)**: Primary source for opportunity and account data
-  - SOQL queries for structured CRM data
-  - Sandbox environment support via domain configuration
-- **Supabase/PostgreSQL**: Customer health scoring system
-  - `salesforce_health_scores` table with salesforce_id (mapped to account_id), health_score, and metadata
-  - Indexed for fast lookups by salesforce_id/account_id
-- **MongoDB (Mock)**: User engagement and usage analytics
-  - In-memory mock implementation for demonstration
-  - Tracks login patterns, session data, and feature usage
+The application integrates with multiple data sources:
+- **Salesforce (CRM)**: Primary source for opportunity and account data via SOQL, accessed using `simple-salesforce`.
+- **Supabase/PostgreSQL**: Stores customer health scores in a `salesforce_health_scores` table, accessed via `supabase-py`.
+- **MongoDB**: (Currently mocked) Intended for user engagement analytics.
 
 ### Authentication & Authorization
 
-**Environment-based Credentials**
-- Salesforce: Username, password, security token, and domain configuration
-- Supabase: URL and API key authentication
-- Slack: Webhook URL for alerting
-- No user authentication implemented (demo application)
+Credentials for external services (Salesforce, Supabase, Slack) are managed via Replit Secrets. The application does not implement user authentication as it's a demo.
 
 ### Design Patterns
 
-**Registry Pattern** (DCL Core)
-- Central registry maintains connector name → query function mappings
-- Metadata stored alongside connectors for introspection
-- Runtime connector registration during initialization
-
-**Factory Pattern** (Connectors)
-- `create_salesforce_connector()`, `create_supabase_connector()` factory functions
-- Returns tuple of (query_function, metadata_dict)
-- Encapsulates connection logic and error handling
-
-**Strategy Pattern** (Schema Mapping)
-- `SchemaMapper` utility provides field mapping between data sources
-- Unified schema definitions for account, opportunity, health, and usage entities
-- Source-specific mappings translate native fields to unified schema
-
-**Graceful Degradation**
-- All connectors implement mock data fallback
-- Application remains functional when external services unavailable
-- Error messages logged but don't crash workflows
+Key design patterns include:
+- **Registry Pattern**: For the DCL core, managing connector mappings.
+- **Factory Pattern**: For creating connector instances.
+- **Strategy Pattern**: For schema mapping between data sources.
+- **Graceful Degradation**: All connectors include mock data fallbacks to maintain application functionality even if external services are unavailable.
 
 ## External Dependencies
 
 ### Third-party Services
 
-**Salesforce API**
-- Integration: `simple-salesforce` Python library
-- Purpose: CRM data source for opportunities and accounts
-- Authentication: Username/password with security token
-- Environment: Sandbox support (domain='test')
-
-**Supabase PostgreSQL**
-- Integration: `supabase-py` client library
-- Purpose: Customer health score storage and retrieval
-- Schema: `salesforce_health_scores` table with indexed salesforce_id lookups (mapped to account_id in code)
-- Authentication: URL + API key
-
-**Slack Webhooks**
-- Integration: Direct HTTP POST requests
-- Purpose: Human-in-the-loop escalation alerts
-- Configuration: Webhook URL via environment variable
-- Format: JSON payload with message formatting
+-   **Salesforce API**: Integrated via `simple-salesforce` for CRM data.
+-   **Supabase PostgreSQL**: Integrated via `supabase-py` for customer health scores.
+-   **Slack Webhooks**: Used for sending human-in-the-loop escalation alerts.
 
 ### Key Python Libraries
 
-- **streamlit**: Web application framework and UI
-- **pandas**: Data manipulation and DataFrame operations
-- **plotly**: Interactive data visualization (express and graph_objects)
-- **simple-salesforce**: Salesforce API client
-- **supabase**: PostgreSQL database client for Supabase
-- **requests**: HTTP client for Slack webhook calls
-
-### Database Schema
-
-**Supabase `salesforce_health_scores` table**:
-- `id`: BIGSERIAL primary key
-- `salesforce_id`: TEXT unique, indexed (foreign key to Salesforce Account.Id, mapped to account_id in connector)
-- `health_score`: INTEGER with check constraint (0-100)
-- `details`: TEXT for contextual information
-- `last_updated`: TIMESTAMP with automatic NOW() default
+-   `pandas`: Data manipulation.
+-   `simple-salesforce`: Salesforce API client.
+-   `supabase`: Supabase client library.
+-   `requests`: HTTP client.
 
 ### Configuration Requirements
 
-Required environment variables:
-- `SALESFORCE_USERNAME`: Salesforce login username
-- `SALESFORCE_PASSWORD`: Salesforce login password
-- `SALESFORCE_SECURITY_TOKEN`: Salesforce security token
-- `SALESFORCE_DOMAIN`: 'test' for sandbox, 'login' for production
-- `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_KEY`: Supabase API key (anon or service role)
-- `SLACK_WEBHOOK_URL`: Incoming webhook URL for alerts (optional)
+**Replit Secrets (Backend):**
+-   `SALESFORCE_USERNAME`, `SALESFORCE_PASSWORD`, `SALESFORCE_SECURITY_TOKEN`, `SALESFORCE_DOMAIN`
+-   `SUPABASE_URL`, `SUPABASE_KEY`
+-   `SLACK_WEBHOOK_URL` (optional)
+-   `MONGODB_URI` (optional)
+-   `AOS_BASE_URL`, `AOS_TENANT_ID`, `AOS_AGENT_ID`, `AOS_JWT` (for platform integration)
+
+**Replit Secrets (Frontend):**
+-   `VITE_USE_PLATFORM_VIEWS`: 'true' for LIVE mode (platform integration), 'false' for DEMO mode.
