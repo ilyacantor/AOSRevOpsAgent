@@ -5,7 +5,7 @@ import { Card } from './Card';
 interface MetricCardProps {
   label: string;
   value: string | number;
-  change?: number;
+  change?: number | string;
   trend?: 'up' | 'down';
   className?: string;
   infoTooltip?: string;
@@ -41,7 +41,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             }`}>
               {trend === 'up' && <TrendingUp className="w-4 h-4 mr-1" />}
               {trend === 'down' && <TrendingDown className="w-4 h-4 mr-1" />}
-              <span>{change > 0 ? '+' : ''}{change}%</span>
+              <span>
+                {typeof change === 'number' 
+                  ? `${change > 0 ? '+' : ''}${change}%`
+                  : change
+                }
+              </span>
             </div>
           )}
         </div>

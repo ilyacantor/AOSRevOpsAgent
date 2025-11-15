@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Play, Send, Info, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Play, Send, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { usePaginatedFetch } from '@/hooks/usePaginatedFetch';
 import { MetricCard } from '@/components/MetricCard';
 import { Card } from '@/components/Card';
