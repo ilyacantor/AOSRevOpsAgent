@@ -18,14 +18,20 @@ export const Connectivity: React.FC = () => {
 
   const connectors = useMemo(() => {
     if (!data) return [];
-    return data.map((conn) => ({
-      id: conn.name,
-      name: conn.name.charAt(0).toUpperCase() + conn.name.slice(1),
-      type: conn.type,
-      status: conn.status.toLowerCase(),
-      last_sync: 'Just now',
-      records_synced: Math.floor(Math.random() * 1000) + 100
-    }));
+    return data.map((conn) => {
+      let displayName = conn.name.charAt(0).toUpperCase() + conn.name.slice(1);
+      if (conn.name.toLowerCase() === 'mongodb') {
+        displayName = 'MongoDB';
+      }
+      return {
+        id: conn.name,
+        name: displayName,
+        type: conn.type,
+        status: conn.status.toLowerCase(),
+        last_sync: 'Just now',
+        records_synced: Math.floor(Math.random() * 1000) + 100
+      };
+    });
   }, [data]);
 
   if (loading) return <LoadingSpinner />;

@@ -87,6 +87,13 @@ export const ConnectorDetailModal: React.FC<ConnectorDetailModalProps> = ({ conn
     return 'bg-red-500/20 text-red-500';
   };
 
+  const getDisplayName = (name: string) => {
+    if (name.toLowerCase() === 'mongodb') {
+      return 'MongoDB';
+    }
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-card-bg border border-border-primary rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -97,7 +104,7 @@ export const ConnectorDetailModal: React.FC<ConnectorDetailModalProps> = ({ conn
               <Database className="w-8 h-8 text-teal-accent" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">{details.name.charAt(0).toUpperCase() + details.name.slice(1)}</h2>
+              <h2 className="text-2xl font-bold text-white">{getDisplayName(details.name)}</h2>
               <p className="text-text-secondary">{details.type}</p>
             </div>
           </div>
