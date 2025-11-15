@@ -18,6 +18,9 @@ The core architecture is built around a **Data Connectivity Layer (DCL)**. This 
 
 The frontend is a modern **React Single Page Application (SPA)** built with React 19, Vite 7, and TypeScript. It features three main pages: Dashboard (Pipeline Health), Operations (CRM Integrity), and Connectivity (DCL Demo). The UI incorporates a custom component library, state management via React hooks, data fetching with a `useFetch` hook and Axios, and responsive design with Tailwind CSS v4. Charts are rendered using the Recharts library, and client-side routing is handled by React Router v7. The application adheres to the autonomOS Platform Theme, utilizing a dark aesthetic with teal accents for a professional, futuristic look.
 
+**Key Features:**
+- **Drill-to-Details Connectivity**: Clickable connector cards on the Connectivity page open detailed modals showing connection health, configuration, capabilities, and live sample data (up to 3 records) fetched via `/api/dcl/connectors/{name}` endpoint. Modal features three tabs: Overview, Health, and Sample Data with comprehensive error handling and loading states.
+
 ### Backend Architecture
 
 The backend implements **Connector and Workflow Patterns**. Each data source has a dedicated connector class that manages authentication, connection, and provides a standardized query interface with mock data fallbacks. Workflows encapsulate business logic, orchestrating multi-source data queries and joins through the DCL. Key workflows include `CRMIntegrityWorkflow` (BANT validation) and `PipelineHealthWorkflow` (multi-source pipeline analysis).
@@ -59,11 +62,11 @@ Key design patterns include:
 ### Configuration Requirements
 
 **Replit Secrets (Backend):**
--   `SALESFORCE_USERNAME`, `SALESFORCE_PASSWORD`, `SALESFORCE_SECURITY_TOKEN`, `SALESFORCE_DOMAIN`
--   `SUPABASE_URL`, `SUPABASE_KEY`
--   `SLACK_WEBHOOK_URL` (optional)
--   `MONGODB_URI` (optional)
--   `AOS_BASE_URL`, `AOS_TENANT_ID`, `AOS_AGENT_ID`, `AOS_JWT` (for platform integration)
+-   **Salesforce OAuth 2.0**: `SALESFORCE_INSTANCE_URL`, `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_REFRESH_TOKEN`
+-   **Supabase**: `SUPABASE_URL`, `SUPABASE_KEY`
+-   **MongoDB**: `MONGODB_URI`, `MONGODB_DATABASE`
+-   **Slack** (optional): `SLACK_WEBHOOK_URL`
+-   **Platform Integration** (optional): `AOS_BASE_URL`, `AOS_TENANT_ID`, `AOS_AGENT_ID`, `AOS_JWT`
 
 **Replit Secrets (Frontend):**
 -   `VITE_USE_PLATFORM_VIEWS`: 'true' for LIVE mode (platform integration), 'false' for DEMO mode.
