@@ -2,7 +2,7 @@
 
 ## Quick Setup Instructions
 
-To complete the Pipeline Health Monitor setup, you need to create the `customer_health` table in your Supabase database.
+To complete the Pipeline Health Monitor setup, you need to create the `salesforce_health_scores` table in your Supabase database.
 
 ### Step 1: Open Supabase SQL Editor
 
@@ -15,7 +15,7 @@ To complete the Pipeline Health Monitor setup, you need to create the `customer_
 Copy and paste this SQL into the editor and click "Run":
 
 ```sql
-CREATE TABLE IF NOT EXISTS customer_health (
+CREATE TABLE IF NOT EXISTS salesforce_health_scores (
     id BIGSERIAL PRIMARY KEY,
     account_id TEXT UNIQUE NOT NULL,
     health_score INTEGER NOT NULL CHECK (health_score >= 0 AND health_score <= 100),
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS customer_health (
 );
 
 -- Create index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_customer_health_account_id ON customer_health(account_id);
+CREATE INDEX IF NOT EXISTS idx_salesforce_health_scores_account_id ON salesforce_health_scores(account_id);
 ```
 
 ### Step 3: Seed Sample Data
@@ -32,7 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_customer_health_account_id ON customer_health(acc
 After creating the table, run this SQL to add sample health scores:
 
 ```sql
-INSERT INTO customer_health (account_id, health_score, details) VALUES
+INSERT INTO salesforce_health_scores (account_id, health_score, details) VALUES
     ('0015g00000XYZ1QAAX', 85, 'High engagement, active usage'),
     ('0015g00000ABC2QAAX', 45, 'Low activity, needs attention'),
     ('0015g00000DEF3QAAX', 92, 'Excellent health, power user'),
@@ -53,13 +53,13 @@ Once you run the Pipeline Health workflow, you'll see the actual Salesforce Acco
 
 ```sql
 -- Example: Update health scores to match your actual account IDs
-UPDATE customer_health SET account_id = 'YOUR_REAL_ACCOUNT_ID' WHERE account_id = '0015g00000XYZ1QAAX';
+UPDATE salesforce_health_scores SET account_id = 'YOUR_REAL_ACCOUNT_ID' WHERE account_id = '0015g00000XYZ1QAAX';
 ```
 
 Or insert new records for your accounts:
 
 ```sql
-INSERT INTO customer_health (account_id, health_score, details) 
+INSERT INTO salesforce_health_scores (account_id, health_score, details) 
 VALUES ('YOUR_ACCOUNT_ID', 75, 'Customer health details')
 ON CONFLICT (account_id) DO UPDATE SET health_score = EXCLUDED.health_score;
 ```
@@ -77,7 +77,15 @@ This will seed the sample data automatically.
 ## Verify Setup
 
 1. Go to Supabase Table Editor
-2. Select `customer_health` table
+2. Select `salesforce_health_scores` table
 3. Verify the data is present
 
 The Pipeline Health Monitor will now be able to fetch and display health scores!
+
+## Viewing Live Data
+
+After setup, you can view the actual data from this table:
+1. Navigate to the **Connectivity** page in the app
+2. Click on the **Supabase** connector card
+3. Go to the **Live Data** tab
+4. You'll see up to 20 records from your `salesforce_health_scores` table

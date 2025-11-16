@@ -1,6 +1,10 @@
 # Deployment Guide
 
-This RevOps DCL Agent can be deployed to either **Replit** or **Render**. Both platforms are fully supported.
+This Pipeline Health Monitor (RevOps DCL Agent) can be deployed to either **Replit** or **Render**. Both platforms are fully supported.
+
+The application consists of:
+- **Frontend**: React 19 + Vite 7 + TypeScript SPA
+- **Backend**: FastAPI server with Data Connectivity Layer (DCL)
 
 ---
 
@@ -9,6 +13,9 @@ This RevOps DCL Agent can be deployed to either **Replit** or **Render**. Both p
 ### Prerequisites
 - Replit account
 - Environment secrets already configured in this Repl
+- Salesforce OAuth 2.0 credentials (instance URL, client ID, client secret, refresh token)
+- Supabase project with `salesforce_health_scores` table
+- MongoDB connection (optional)
 
 ### Steps
 
@@ -62,18 +69,32 @@ Push your code to a GitHub repository using standard version control commands.
 
 In the Render dashboard, add these environment variables:
 
+**Salesforce OAuth 2.0 (Required):**
 | Variable Name | Description |
 |---------------|-------------|
-| `SALESFORCE_USERNAME` | Salesforce login username |
-| `SALESFORCE_PASSWORD` | Salesforce password |
-| `SALESFORCE_SECURITY_TOKEN` | Salesforce security token |
-| `SALESFORCE_DOMAIN` | `login` for production, `test` for sandbox |
+| `SALESFORCE_INSTANCE_URL` | Your Salesforce instance URL (e.g., `https://yourorg.my.salesforce.com`) |
+| `SALESFORCE_CLIENT_ID` | OAuth app consumer key |
+| `SALESFORCE_CLIENT_SECRET` | OAuth app consumer secret |
+| `SALESFORCE_REFRESH_TOKEN` | OAuth refresh token |
+
+**Supabase (Required):**
+| Variable Name | Description |
+|---------------|-------------|
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_KEY` | Supabase API key |
-| `MONGODB_URI` | MongoDB connection string (optional) |
-| `MONGODB_DATABASE` | MongoDB database name (optional) |
-| `SLACK_WEBHOOK_URL` | Slack webhook for alerts (optional) |
+
+**MongoDB (Optional):**
+| Variable Name | Description |
+|---------------|-------------|
+| `MONGODB_URI` | MongoDB connection string |
+| `MONGODB_DATABASE` | MongoDB database name |
+
+**Other (Optional):**
+| Variable Name | Description |
+|---------------|-------------|
+| `SLACK_WEBHOOK_URL` | Slack webhook for alerts |
 | `SESSION_SECRET` | Random secret for sessions |
+| `VITE_USE_PLATFORM_VIEWS` | `true` for LIVE mode, `false` for DEMO mode |
 
 #### 4. Deploy
 
@@ -99,14 +120,14 @@ The `render.yaml` file in this repository contains the full deployment configura
 After deployment to either platform, verify your app is working:
 
 1. **Visit the app URL** 
-2. **Check the Dashboard** - should show connector status
-3. **Test workflows:**
-   - BANT Validation - should show your Salesforce opportunities
-   - Pipeline Health - should show joined data from Salesforce + Supabase
-4. **Verify connectors are green:**
-   - Salesforce: Active (with real opportunity count)
-   - Supabase: Active (with real health score count)
-   - MongoDB: Active (mock data is normal)
+2. **Check the Dashboard** - should show pipeline health metrics
+3. **Test the Connectivity page:**
+   - Click on any connector card to view detailed information
+   - Verify "Live Data" tab shows up to 20 actual records from your data sources
+4. **Verify connectors are healthy:**
+   - Salesforce: Healthy (green) - OAuth 2.0 authenticated
+   - Supabase: Healthy (green) - Connected to PostgreSQL
+   - MongoDB: Healthy (green) or Mock (yellow) depending on configuration
 
 ---
 
@@ -115,14 +136,15 @@ After deployment to either platform, verify your app is working:
 ### Common Issues
 
 **"Salesforce not connected"**
-- Verify credentials are set correctly
-- Check `SALESFORCE_DOMAIN` is `login` for production or `test` for sandbox
-- Regenerate security token if needed (Salesforce → Settings → Reset Security Token)
+- Verify OAuth 2.0 credentials are correct
+- Ensure `SALESFORCE_INSTANCE_URL` matches your Salesforce org (no trailing slash)
+- Check refresh token is still valid
+- Verify OAuth app has required permissions (API access, refresh token)
 
 **"Supabase not connected"**
 - Verify `SUPABASE_URL` and `SUPABASE_KEY` are correct
 - Ensure the `salesforce_health_scores` table exists in your Supabase database
-- Check API key has proper permissions
+- Check API key has proper permissions (read/write access to the table)
 
 **"App won't start"**
 - Check build logs for dependency errors

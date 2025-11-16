@@ -19,7 +19,11 @@ The core architecture is built around a **Data Connectivity Layer (DCL)**. This 
 The frontend is a modern **React Single Page Application (SPA)** built with React 19, Vite 7, and TypeScript. It features three main pages: Dashboard (Pipeline Health), Operations (CRM Integrity), and Connectivity (DCL Demo). The UI incorporates a custom component library, state management via React hooks, data fetching with a `useFetch` hook and Axios, and responsive design with Tailwind CSS v4. Charts are rendered using the Recharts library, and client-side routing is handled by React Router v7. The application adheres to the autonomOS Platform Theme, utilizing a dark aesthetic with teal accents for a professional, futuristic look.
 
 **Key Features:**
-- **Drill-to-Details Connectivity**: Clickable connector cards on the Connectivity page open detailed modals showing connection health, configuration, capabilities, and live sample data (up to 3 records) fetched via `/api/dcl/connectors/{name}` endpoint. Modal features three tabs: Overview, Health, and Sample Data with comprehensive error handling and loading states.
+- **Drill-to-Details Connectivity**: Clickable connector cards on the Connectivity page open detailed modals showing connection health, configuration, capabilities, and live data (up to 20 records) pulled directly from the actual data source instances. Accessible via `/api/dcl/connectors/{name}` endpoint. Modal features three tabs:
+  - **Overview**: Connection status, sanitized configuration details, capabilities, and description
+  - **Health**: Real-time health check results with error diagnostics
+  - **Live Data**: Actual records from the connector's data source (up to 20 records max)
+  - All tabs include comprehensive error handling, loading states, and click-outside-to-close functionality
 
 ### Backend Architecture
 
@@ -28,9 +32,9 @@ The backend implements **Connector and Workflow Patterns**. Each data source has
 ### Data Storage Solutions
 
 The application integrates with multiple data sources:
-- **Salesforce (CRM)**: Primary source for opportunity and account data via SOQL, accessed using `simple-salesforce`.
+- **Salesforce (CRM)**: Primary source for opportunity and account data via SOQL, accessed using `simple-salesforce` with OAuth 2.0 authentication.
 - **Supabase/PostgreSQL**: Stores customer health scores in a `salesforce_health_scores` table, accessed via `supabase-py`.
-- **MongoDB**: (Currently mocked) Intended for user engagement analytics.
+- **MongoDB**: User engagement analytics and usage data, accessed via `pymongo`.
 
 ### Authentication & Authorization
 
