@@ -204,11 +204,7 @@ class PaginationMetadata(BaseModel):
     next_cursor: Optional[str] = None
 
 # Removed startup event - using lazy initialization instead
-
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "Pipeline Health Monitor API"}
+# Root route removed - now served by catch-all route for React frontend
 
 @app.get("/api/platform/config", response_model=PlatformConfigResponse)
 async def get_platform_config():
