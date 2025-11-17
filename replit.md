@@ -74,3 +74,20 @@ Key design patterns include:
 
 **Replit Secrets (Frontend):**
 -   `VITE_USE_PLATFORM_VIEWS`: 'true' for LIVE mode (platform integration), 'false' for DEMO mode.
+
+## Deployment
+
+The application uses a React + FastAPI architecture:
+
+**Development (Replit):**
+- Frontend: Vite dev server on port 5000 (workflow: "Frontend")
+- Backend: FastAPI on port 8000 (workflow: "Backend API")
+- Runs as two separate processes with hot module replacement
+
+**Production (Deployment):**
+- Frontend is built into static files: `cd frontend && npm run build`
+- FastAPI serves both API (`/api/*`) and frontend (`/*`) on a single port
+- Static files are served from `frontend/dist` directory
+- Single unified deployment process
+
+See `DEPLOYMENT.md` for detailed deployment instructions for Replit and Render platforms.

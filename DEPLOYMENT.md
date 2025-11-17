@@ -17,14 +17,27 @@ The application consists of:
 - Supabase project with `salesforce_health_scores` table
 - MongoDB connection (optional)
 
+### How It Works
+When you publish on Replit, the system will:
+1. Build the React frontend (`cd frontend && npm run build`)
+2. Start FastAPI server on port 5000
+3. FastAPI serves both the API (`/api/*`) and the built React app (`/*`)
+
 ### Steps
 
-1. **Click the Publish button** in the Replit interface
-2. **Configure deployment settings:**
+1. **Build the frontend first** (optional but recommended):
+   ```bash
+   cd frontend && npm run build && cd ..
+   ```
+
+2. **Click the Publish button** in the Replit interface
+
+3. **Configure deployment settings:**
    - Choose your deployment tier
    - Select a custom domain (optional)
    - Review deployment settings
-3. **Publish!** 
+
+4. **Publish!** 
    - Replit will automatically handle SSL, health checks, and environment variables
    - Your app will be live at `https://your-app.replit.app`
 
@@ -59,10 +72,10 @@ Push your code to a GitHub repository using standard version control commands.
 2. **Click "New +"** → **"Web Service"**
 3. **Connect your GitHub repository**
 4. **Configure the service:**
-   - **Name:** `revops-dcl-agent`
-   - **Environment:** Python
-   - **Build Command:** See requirements.txt
-   - **Start Command:** `streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true`
+   - **Name:** `pipeline-health-monitor`
+   - **Environment:** Node
+   - **Build Command:** `cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt`
+   - **Start Command:** `uvicorn api:app --host 0.0.0.0 --port $PORT`
    - **Plan:** Starter (or higher)
 
 #### 3. Configure Environment Variables
@@ -153,7 +166,11 @@ After deployment to either platform, verify your app is working:
 
 **"Port binding error"**
 - For Render: The app automatically uses `$PORT` environment variable
-- For Replit: Port 5000 is configured in `.streamlit/config.toml`
+- For Replit: Frontend runs on port 5000 (Vite), Backend on port 8000 (FastAPI)
+
+**"Frontend not built" error**
+- Run `cd frontend && npm run build` to create production build
+- Ensure the `frontend/dist` directory exists before deploying
 
 ---
 

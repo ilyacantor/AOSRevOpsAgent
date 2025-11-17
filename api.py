@@ -11,11 +11,14 @@ ARCHITECTURE NOTE:
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import pandas as pd
 from datetime import datetime
 import os
+from pathlib import Path
 
 from dcl_core import DCL
 from connectors.salesforce_connector import create_salesforce_connector
@@ -558,6 +561,25 @@ async def health_check():
         "connectors": connector_status,
         "timestamp": datetime.now().isoformat()
     }
+
+# Serve static files from frontend build (production only)
+frontend_dist = Path(__file__).parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
+    
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """Serve React frontend for all non-API routes"""
+        # Skip API routes
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        
+        # Serve index.html for client-side routing
+        index_path = frontend_dist / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        else:
+            raise HTTPException(status_code=404, detail="Frontend not built. Run: cd frontend && npm run build")
 
 @app.on_event("shutdown")
 async def shutdown_event():
