@@ -18,7 +18,7 @@ import {
 import { AlertTriangle, ChevronDown, ChevronUp, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchCrmIntegrityWithFallback } from '../lib/dataFetchers';
 import { sendBantAlert } from '../lib/intentHelpers';
-import type { ValidationResponse, ValidationRecord } from '../lib/adapters';
+import type { ValidationResponse } from '../lib/adapters';
 
 type BackendResponse = ValidationResponse;
 

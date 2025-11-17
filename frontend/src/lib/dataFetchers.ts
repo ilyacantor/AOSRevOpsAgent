@@ -51,7 +51,7 @@ export async function fetchPipelineHealthWithFallback(options?: {
       usePlatformViews: USE_PLATFORM_VIEWS,
     });
 
-    return getMockPipelineHealth({ page, page_size, cursor }, 'platform_disabled');
+    return getMockPipelineHealth({ page, page_size, cursor });
   }
 
   // Path 2: Try platform, fallback to mock on error
@@ -71,7 +71,7 @@ export async function fetchPipelineHealthWithFallback(options?: {
       usePlatformViews: USE_PLATFORM_VIEWS,
     });
 
-    return getMockPipelineHealth({ page, page_size, cursor }, 'client_not_initialized');
+    return getMockPipelineHealth({ page, page_size, cursor });
   }
 
   try {
@@ -120,7 +120,7 @@ export async function fetchPipelineHealthWithFallback(options?: {
       usePlatformViews: USE_PLATFORM_VIEWS,
     });
 
-    return getMockPipelineHealth({ page, page_size, cursor }, 'platform_fetch_failed');
+    return getMockPipelineHealth({ page, page_size, cursor });
   }
 }
 
@@ -153,7 +153,7 @@ export async function fetchCrmIntegrityWithFallback(options?: {
       usePlatformViews: USE_PLATFORM_VIEWS,
     });
 
-    return getMockCrmIntegrity({ page, page_size, cursor }, 'platform_disabled');
+    return getMockCrmIntegrity({ page, page_size, cursor });
   }
 
   // Path 2: Try platform, fallback to mock on error
@@ -173,7 +173,7 @@ export async function fetchCrmIntegrityWithFallback(options?: {
       usePlatformViews: USE_PLATFORM_VIEWS,
     });
 
-    return getMockCrmIntegrity({ page, page_size, cursor }, 'client_not_initialized');
+    return getMockCrmIntegrity({ page, page_size, cursor });
   }
 
   try {
@@ -222,6 +222,6 @@ export async function fetchCrmIntegrityWithFallback(options?: {
       usePlatformViews: USE_PLATFORM_VIEWS,
     });
 
-    return getMockCrmIntegrity({ page, page_size, cursor }, 'platform_fetch_failed');
+    return getMockCrmIntegrity({ page, page_size, cursor });
   }
 }
