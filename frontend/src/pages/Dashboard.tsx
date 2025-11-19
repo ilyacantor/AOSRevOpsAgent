@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Play, Send, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Play, Send, ChevronLeft, ChevronRight, AlertTriangle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePaginatedFetch } from '@/hooks/usePaginatedFetch';
 import { MetricCard } from '@/components/MetricCard';
 import { Card } from '@/components/Card';
@@ -43,6 +43,8 @@ export const Dashboard: React.FC = () => {
   const [riskScoreFilter, setRiskScoreFilter] = useState(0);
   const [alertLoading, setAlertLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showFAQ, setShowFAQ] = useState(false);
+  const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
 
   const parsedMetrics = useMemo(() => {
     if (!data?.metrics) return null;
@@ -156,18 +158,110 @@ export const Dashboard: React.FC = () => {
     );
   }
 
+  const faqItems = [
+    {
+      question: "What is this dashboard for?",
+      answer: "The Pipeline Health Monitor provides visibility into your sales pipeline health. It displays opportunity metrics including risk scores, health scores, deal amounts, and stalled status. The dashboard helps identify at-risk opportunities before they're lost."
+    },
+    {
+      question: "How do I read the metrics?",
+      answer: "The dashboard shows 8 key metrics: Total Opportunities (all active deals), At Risk (high risk score or stalled), Healthy (low risk, high health), Pipeline Value (total $), Stalled Deals (no activity), Avg Health Score (customer health 0-100), High Risk Deals (score >70), and Avg Risk Score (pipeline risk 0-100)."
+    },
+    {
+      question: "What's the difference between Health Score and Risk Score?",
+      answer: "Health Score (0-100) measures customer engagement - higher is better. Risk Score (0-100) indicates deal risk based on stall time, low health, and other factors - higher means more risk. The scatter chart shows both dimensions simultaneously."
+    },
+    {
+      question: "What does 'Stalled' mean?",
+      answer: "A deal is marked 'Stalled' if it hasn't progressed to a new stage in over 30 days. Stalled deals have higher risk of being lost and require immediate action from your sales team."
+    },
+    {
+      question: "How do I use the filters?",
+      answer: "Use 'Show stalled deals only' checkbox to focus on deals needing attention. The 'Min Risk Score' slider filters opportunities by risk threshold (e.g., set to 70 to see only high-risk deals). The filtered count is shown below the controls."
+    },
+    {
+      question: "Where does the data come from?",
+      answer: "This dashboard displays data from the platform's data views system. When platform views are enabled (VITE_USE_PLATFORM_VIEWS=true), it shows integrated CRM and customer data. When disabled, it uses representative demo data for testing and demonstrations."
+    },
+    {
+      question: "What's LIVE vs DEMO mode?",
+      answer: "LIVE mode (platform views enabled) displays actual integrated data. DEMO mode uses realistic mock data for demos and testing. The mode is controlled by the VITE_USE_PLATFORM_VIEWS environment variable in Replit Secrets."
+    },
+    {
+      question: "How do Slack alerts work?",
+      answer: "When high-risk deals are detected (risk score >70), the 'Send Slack Alerts' button triggers alert workflow. Full Slack integration requires backend configuration (SLACK_WEBHOOK_URL secret and platform alert endpoints). Current implementation may use demo/testing endpoints—verify alert delivery in your environment."
+    },
+    {
+      question: "Why do some metrics show warning icons?",
+      answer: "Warning icons (ⓘ) indicate when certain data components are unavailable. For example, if usage data or health data is missing, calculations may use default values. Hover over the icon to see which data is affected."
+    },
+    {
+      question: "How often does data refresh?",
+      answer: "Click 'Run Workflow' to fetch fresh data. The dashboard typically shows the most recent data available from the platform views system. For backend data source status and direct connector testing, visit the Connectivity page."
+    }
+  ];
+
+  const toggleFAQ = (index: number) => {
+    setExpandedFAQ(expandedFAQ === index ? null : index);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-white">Pipeline Health Dashboard</h1>
-        <button
-          onClick={handleRunWorkflow}
-          className="flex items-center gap-2 px-6 py-3 bg-teal-accent text-white rounded-lg hover:bg-teal-hover hover:shadow-lg hover:shadow-cyan-500/50 transition-all duration-200"
-        >
-          <Play className="w-5 h-5" />
-          Run Workflow
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFAQ(!showFAQ)}
+            className="flex items-center gap-2 px-4 py-2 bg-card-bg border border-card-border text-white rounded-lg hover:bg-card-border transition"
+          >
+            <HelpCircle className="w-5 h-5" />
+            {showFAQ ? 'Hide Guide' : 'Quick Start Guide'}
+          </button>
+          <button
+            onClick={handleRunWorkflow}
+            className="flex items-center gap-2 px-6 py-3 bg-teal-accent text-white rounded-lg hover:bg-teal-hover hover:shadow-lg hover:shadow-cyan-500/50 transition-all duration-200"
+          >
+            <Play className="w-5 h-5" />
+            Run Workflow
+          </button>
+        </div>
       </div>
+
+      {showFAQ && (
+        <Card>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-white mb-2">Operating Guide & FAQ</h2>
+            <p className="text-text-secondary">Everything you need to know about the Pipeline Health Monitor</p>
+          </div>
+          <div className="space-y-2">
+            {faqItems.map((item, index) => (
+              <div key={index} className="border border-card-border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleFAQ(index)}
+                  className="w-full flex items-center justify-between p-4 text-left hover:bg-card-border/20 transition"
+                >
+                  <span className="text-white font-medium pr-4">{item.question}</span>
+                  {expandedFAQ === index ? (
+                    <ChevronUp className="w-5 h-5 text-teal-accent flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-text-secondary flex-shrink-0" />
+                  )}
+                </button>
+                {expandedFAQ === index && (
+                  <div className="px-4 pb-4 text-text-secondary leading-relaxed border-t border-card-border/50 pt-3">
+                    {item.answer}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 p-4 bg-teal-accent/10 border border-teal-accent/30 rounded-lg">
+            <p className="text-teal-accent text-sm">
+              <strong>💡 Pro Tip:</strong> Visit the <strong>Connectivity</strong> page to explore the backend connector framework. With valid credentials configured in Replit Secrets, connectors can fetch live data from Salesforce, Supabase, and MongoDB. Without credentials, the system demonstrates capabilities using mock data.
+            </p>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
