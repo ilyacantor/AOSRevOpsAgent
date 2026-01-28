@@ -1,93 +1,230 @@
 # Pipeline Health Monitor
 
-## Overview
+## What This Application Does
 
-This project is a real-time revenue operations monitoring application designed to unify CRM (Salesforce), customer health (Supabase/PostgreSQL), and user engagement (MongoDB) data. It provides workflow-based analytics for CRM integrity validation (BANT framework) and pipeline health monitoring, including Slack-based alerting. The system utilizes a Data Connectivity Layer (DCL) to abstract data access, enabling flexible integration and separation of concerns between business logic and data sources. The application aims to provide a comprehensive, unified view of pipeline health and CRM data integrity to drive informed business decisions.
+This is a **Revenue Operations (RevOps) monitoring dashboard** that helps sales and operations teams track their sales pipeline health. It brings together data from three sources:
+
+- **Salesforce** - Your CRM deals and opportunities
+- **Supabase** - Customer health scores and engagement metrics
+- **MongoDB** - User activity and usage analytics
+
+The application displays key performance indicators, identifies at-risk deals, validates CRM data quality, and can alert your team via Slack when issues arise.
+
+---
+
+## How to Use the Application
+
+### Dashboard (Pipeline Health)
+
+**What you can do here:**
+- View 8 key performance metrics at a glance (total pipeline value, win rate, average deal size, etc.)
+- See pipeline breakdown by stage with visual charts
+- Identify high-risk deals that need attention (risk score > 70)
+- Send Slack alerts to notify your team about at-risk opportunities
+- Filter by stalled deals and minimum risk score threshold
+- Access the **Quick Start Guide** (collapsible FAQ) for help
+
+**Key Metrics Explained:**
+- **Health Score** (0-100): Higher is better - measures overall deal quality
+- **Risk Score** (0-100): Lower is better - measures likelihood of deal problems
+- **Pipeline Velocity**: How fast deals move through your pipeline
+- **Stalled Deals**: Opportunities with no activity for 14+ days
+
+### Operations (CRM Integrity)
+
+**What you can do here:**
+- Validate CRM data quality using the BANT framework
+- Check if opportunities have complete information (Budget, Authority, Need, Timeline)
+- Review data completeness scores for your pipeline
+- Identify records with missing or incomplete fields
+- Filter validation results by risk level (Low, Medium, High)
+- Navigate through paginated results
+
+**BANT Framework:**
+- **Budget**: Does the opportunity have a defined budget?
+- **Authority**: Is the decision-maker identified?
+- **Need**: Is the customer's need clearly documented?
+- **Timeline**: Is there a target close date?
+
+### Connectivity (Data Sources)
+
+**What you can do here:**
+- See real-time status of all data source connections (healthy, degraded, or offline)
+- View whether connectors are using live credentials or mock fallback data
+- Click any connector card to view detailed information:
+  - **Overview tab**: Configuration and capabilities
+  - **Health tab**: Connection test results and error diagnostics
+  - **Live Data tab**: Sample records from the data source (up to 20 records when credentials configured)
+
+---
+
+## LIVE Mode vs DEMO Mode
+
+The application operates in two modes:
+
+| Mode | How It Works | When to Use |
+|------|--------------|-------------|
+| **LIVE** | Displays real data from your connected services | Production use with configured credentials |
+| **DEMO** | Displays realistic mock data | Demos, testing, or when credentials unavailable |
+
+**How modes are determined:**
+- **Dashboard & Operations**: Controlled by `VITE_USE_PLATFORM_VIEWS` environment variable (set to 'true' for platform data)
+- **Connectivity page**: Each connector's status reflects whether valid credentials are configured; without credentials, connectors use mock data fallback
+
+---
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+- Preferred communication style: Simple, everyday language
+- Dark theme with teal accents (autonomOS Platform Theme)
 
-## System Architecture
+---
 
-### Core Architecture Pattern
+## Project Structure
 
-The core architecture is built around a **Data Connectivity Layer (DCL)**. This DCL acts as a universal router and abstraction layer, using a Registry Pattern to manage various data connectors (Salesforce, Supabase, MongoDB). Connectors register with the DCL, providing a standardized `query(params)` interface and metadata. Workflows then query the DCL, which routes requests to the appropriate connector, translating generic parameters into source-specific query languages. This design ensures clean separation between data access and business logic, allows for graceful degradation with mock data fallbacks, and simplifies the integration of new data sources.
+```
+/
+├── api.py                 # FastAPI backend server
+├── dcl_core.py           # Data Connectivity Layer core
+├── connectors/           # Data source connectors
+│   ├── salesforce_connector.py
+│   ├── supabase_connector.py
+│   └── mongodb_connector.py
+├── workflows/            # Business logic workflows
+├── frontend/             # React SPA
+│   ├── src/
+│   │   ├── pages/        # Dashboard, Operations, Connectivity
+│   │   ├── components/   # Reusable UI components
+│   │   └── lib/          # Data fetching utilities
+│   └── dist/             # Production build output
+├── roadmap_revops.md     # Feature roadmap and limitations
+└── DEPLOYMENT.md         # Deployment instructions
+```
 
-### Frontend Architecture
+---
 
-The frontend is a modern **React Single Page Application (SPA)** built with React 19, Vite 7, and TypeScript. It features three main pages: Dashboard (Pipeline Health), Operations (CRM Integrity), and Connectivity (DCL Demo). The UI incorporates a custom component library, state management via React hooks, data fetching with a `useFetch` hook and Axios, and responsive design with Tailwind CSS v4. Charts are rendered using the Recharts library, and client-side routing is handled by React Router v7. The application adheres to the autonomOS Platform Theme, utilizing a dark aesthetic with teal accents for a professional, futuristic look.
+## Technical Architecture
 
-**Key Features:**
-- **Drill-to-Details Connectivity**: Clickable connector cards on the Connectivity page open detailed modals showing connection health, configuration, capabilities, and live data (up to 20 records) pulled directly from the actual data source instances. Accessible via `/api/dcl/connectors/{name}` endpoint. Modal features three tabs:
-  - **Overview**: Connection status, sanitized configuration details, capabilities, and description
-  - **Health**: Real-time health check results with error diagnostics
-  - **Live Data**: Actual records from the connector's data source (up to 20 records max)
-  - All tabs include comprehensive error handling, loading states, and click-outside-to-close functionality
+### Data Flow
 
-### Backend Architecture
+1. **Dashboard & Operations pages** → Platform views (AosClient) or mock data services
+2. **Connectivity page** → Backend DCL API (`/api/dcl/connectors`)
 
-The backend implements **Connector and Workflow Patterns**. Each data source has a dedicated connector class that manages authentication, connection, and provides a standardized query interface with mock data fallbacks. Workflows encapsulate business logic, orchestrating multi-source data queries and joins through the DCL. Key workflows include `CRMIntegrityWorkflow` (BANT validation) and `PipelineHealthWorkflow` (multi-source pipeline analysis).
+Note: The backend DCL connectors are fully implemented but currently only used by the Connectivity page for connector testing and monitoring.
 
-### Data Storage Solutions
+### Backend (FastAPI + Python)
 
-The application integrates with multiple data sources:
-- **Salesforce (CRM)**: Primary source for opportunity and account data via SOQL, accessed using `simple-salesforce` with OAuth 2.0 authentication.
-- **Supabase/PostgreSQL**: Stores customer health scores in a `salesforce_health_scores` table, accessed via `supabase-py`.
-- **MongoDB**: User engagement analytics and usage data, accessed via `pymongo`.
+- **Data Connectivity Layer (DCL)**: Abstraction layer managing all data source connections
+- **Connectors**: Salesforce (OAuth 2.0), Supabase, MongoDB - each with mock fallbacks
+- **Health Checks**: Cached status with 60-second TTL
+- **API Endpoints**:
+  - `GET /api/dcl/connectors` - List all connectors with status
+  - `GET /api/dcl/connectors/{name}` - Connector details with live data
+  - `GET /api/health` - Application health check
 
-### Authentication & Authorization
+### Frontend (React 19 + TypeScript)
 
-Credentials for external services (Salesforce, Supabase, Slack) are managed via Replit Secrets. The application does not implement user authentication as it's a demo.
+- **Vite 7** for development and builds
+- **React Router v7** for navigation
+- **Tailwind CSS v4** for styling
+- **Recharts** for data visualization
+- **Axios** for API calls
 
-### Design Patterns
+---
 
-Key design patterns include:
-- **Registry Pattern**: For the DCL core, managing connector mappings.
-- **Factory Pattern**: For creating connector instances.
-- **Strategy Pattern**: For schema mapping between data sources.
-- **Graceful Degradation**: All connectors include mock data fallbacks to maintain application functionality even if external services are unavailable.
+## Configuration
 
-## External Dependencies
+### Required Secrets (Replit Secrets)
 
-### Third-party Services
+For **LIVE mode** with real data, configure these secrets:
 
--   **Salesforce API**: Integrated via `simple-salesforce` for CRM data.
--   **Supabase PostgreSQL**: Integrated via `supabase-py` for customer health scores.
--   **Slack Webhooks**: Used for sending human-in-the-loop escalation alerts.
+**Salesforce (choose one authentication method):**
 
-### Key Python Libraries
+*Option A - OAuth 2.0 (Preferred):*
+- `SALESFORCE_INSTANCE_URL`
+- `SALESFORCE_CLIENT_ID`
+- `SALESFORCE_CLIENT_SECRET`
+- `SALESFORCE_REFRESH_TOKEN`
 
--   `pandas`: Data manipulation.
--   `simple-salesforce`: Salesforce API client.
--   `supabase`: Supabase client library.
--   `requests`: HTTP client.
+*Option B - Username/Password (Legacy):*
+- `SALESFORCE_DOMAIN` (e.g., 'test' for sandbox)
+- `SALESFORCE_USERNAME`
+- `SALESFORCE_PASSWORD`
+- `SALESFORCE_SECURITY_TOKEN`
 
-### Configuration Requirements
+**Supabase:**
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
 
-**Replit Secrets (Backend):**
--   **Salesforce OAuth 2.0**: `SALESFORCE_INSTANCE_URL`, `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_REFRESH_TOKEN`
--   **Supabase**: `SUPABASE_URL`, `SUPABASE_KEY`
--   **MongoDB**: `MONGODB_URI`, `MONGODB_DATABASE`
--   **Slack** (optional): `SLACK_WEBHOOK_URL`
--   **Platform Integration** (optional): `AOS_BASE_URL`, `AOS_TENANT_ID`, `AOS_AGENT_ID`, `AOS_JWT`
+**MongoDB:**
+- `MONGODB_URI`
+- `MONGODB_DATABASE`
 
-**Replit Secrets (Frontend):**
--   `VITE_USE_PLATFORM_VIEWS`: 'true' for LIVE mode (platform integration), 'false' for DEMO mode.
+**Optional:**
+- `SLACK_WEBHOOK_URL` - For Slack alerts
+- `VITE_USE_PLATFORM_VIEWS` - Set to 'true' for LIVE mode on Dashboard/Operations
 
-## Deployment
+### Without Secrets
 
-The application uses a React + FastAPI architecture:
+The application works without any secrets configured:
+- **Dashboard & Operations**: Display mock data when `VITE_USE_PLATFORM_VIEWS` is not set to 'true'
+- **Connectivity page**: Backend connectors fall back to realistic mock data when credentials are missing
 
-**Development (Replit):**
-- Frontend: Vite dev server on port 5000 (workflow: "Frontend")
-- Backend: FastAPI on port 8000 (workflow: "Backend API")
-- Runs as two separate processes with hot module replacement
+---
 
-**Production (Deployment):**
-- Frontend is built into static files: `cd frontend && npm run build`
-- FastAPI serves both API (`/api/*`) and frontend (`/*`) on a single port
-- Static files are served from `frontend/dist` directory
-- Single unified deployment process
+## Running the Application
 
-See `DEPLOYMENT.md` for detailed deployment instructions for Replit and Render platforms.
+### Development
+
+Two workflows run simultaneously:
+- **Frontend**: `cd frontend && npm run dev` (port 5000)
+- **Backend API**: `uvicorn api:app --host 0.0.0.0 --port 8000 --reload`
+
+### Production Deployment
+
+1. Build frontend: `cd frontend && npm run build`
+2. Run unified server: `uvicorn api:app --host 0.0.0.0 --port 5000`
+
+FastAPI serves both the API (`/api/*`) and the React frontend (`/*`) from a single process.
+
+---
+
+## Current Limitations
+
+- **No user authentication** - This is a demo/internal tool
+- **Dashboard/Operations** use platform views or mock data, not backend DCL
+- **Live connector data** requires configured credentials and environment testing
+- **No historical data tracking** - Shows current snapshot only
+- **No data export** - View-only interface
+
+See `roadmap_revops.md` for detailed limitations and future development plans.
+
+---
+
+## Useful Commands
+
+```bash
+# Start frontend dev server
+cd frontend && npm run dev
+
+# Start backend server
+uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+
+# Build for production
+cd frontend && npm run build
+
+# Test backend health
+curl http://localhost:8000/api/health
+
+# List connectors
+curl http://localhost:8000/api/dcl/connectors
+```
+
+---
+
+## Related Documentation
+
+- `DEPLOYMENT.md` - Step-by-step deployment guide
+- `roadmap_revops.md` - Features, limitations, and future roadmap
+- `SUPABASE_SETUP.md` - Database schema setup
+- `frontend/README.md` - Frontend-specific documentation
