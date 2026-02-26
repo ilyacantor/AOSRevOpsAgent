@@ -16,18 +16,11 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5000,
+    port: 3007,
     strictPort: false,
-    allowedHosts: ['.replit.dev', '.repl.co'],
-    hmr: {
-      clientPort: 443,
-      host: process.env.REPL_SLUG 
-        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-        : 'localhost',
-    },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8007',
         changeOrigin: true,
       },
     },
