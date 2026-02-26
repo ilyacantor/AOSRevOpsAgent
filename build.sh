@@ -1,26 +1,28 @@
 #!/usr/bin/env bash
 set -e
 
-# Install Python dependencies
+echo "=== Installing Python dependencies ==="
 pip install -r requirements.txt
 
-# Install Node.js for frontend build (Render Python env doesn't include it)
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash - 2>/dev/null || true
-apt-get install -y nodejs 2>/dev/null || true
-
-# If apt isn't available, try using the pre-installed node
-if ! command -v node &>/dev/null; then
-  echo "Node.js not found via apt, checking PATH..."
-  export PATH="/usr/local/bin:/usr/bin:$PATH"
+echo "=== Checking for Node.js ==="
+if command -v node &>/dev/null; then
+  echo "Node: $(node --version)"
+  echo "npm: $(npm --version)"
+else
+  echo "Node.js not found, installing via nvm..."
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  nvm install 20
+  nvm use 20
+  echo "Node: $(node --version)"
+  echo "npm: $(npm --version)"
 fi
 
-echo "Node version: $(node --version 2>/dev/null || echo 'not found')"
-echo "npm version: $(npm --version 2>/dev/null || echo 'not found')"
-
-# Build frontend
+echo "=== Building frontend ==="
 cd frontend
 npm install
 npm run build
 cd ..
 
-echo "Build complete"
+echo "=== Build complete ==="
