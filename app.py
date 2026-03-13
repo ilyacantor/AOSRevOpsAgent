@@ -201,11 +201,11 @@ def initialize_connectors():
     
     try:
         # Salesforce connector
-        sf_query_fn, sf_metadata = create_salesforce_connector()
+        sf_query_fn, sf_metadata, sf_connector = create_salesforce_connector()
         st.session_state.dcl.register_connector('salesforce', sf_query_fn, sf_metadata)
         
         # Supabase connector
-        sb_query_fn, sb_metadata = create_supabase_connector()
+        sb_query_fn, sb_metadata, sb_connector = create_supabase_connector()
         st.session_state.dcl.register_connector('supabase', sb_query_fn, sb_metadata)
         
         # MongoDB mock connector

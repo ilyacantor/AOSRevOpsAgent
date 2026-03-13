@@ -4,30 +4,100 @@ Integrates with Salesforce Sandbox API to fetch CRM data
 """
 
 import os
+import time
 from simple_salesforce.api import Salesforce
 import pandas as pd
+from connectors.exceptions import ConnectorConfigurationError
 
 class SalesforceConnector:
-    def __init__(self):
+    def __init__(self, allow_mock=False):
+        # OAuth credentials (preferred)
+        self.instance_url = os.getenv('SALESFORCE_INSTANCE_URL', '')
+        self.refresh_token = os.getenv('SALESFORCE_REFRESH_TOKEN', '')
+        self.client_id = os.getenv('SALESFORCE_CLIENT_ID', '')
+        self.client_secret = os.getenv('SALESFORCE_CLIENT_SECRET', '')
+        
+        # Legacy username/password credentials (fallback)
         self.username = os.getenv('SALESFORCE_USERNAME', '')
         self.password = os.getenv('SALESFORCE_PASSWORD', '')
         self.security_token = os.getenv('SALESFORCE_SECURITY_TOKEN', '')
         self.domain = os.getenv('SALESFORCE_DOMAIN', 'test')  # 'test' for sandbox
+        
+        self.allow_mock = allow_mock
         self.sf = None
+        self.config_error = None
+        self._health_cache = None
+        self._health_cache_time = 0
+        self._health_cache_ttl = 60  # Cache health checks for 60 seconds
         self._connect()
     
     def _connect(self):
-        """Establish connection to Salesforce"""
-        try:
-            if self.username and self.password:
+        """Establish connection to Salesforce using OAuth or legacy credentials"""
+        # Try OAuth first (preferred method)
+        if self.instance_url and self.refresh_token and self.client_id and self.client_secret:
+            try:
+                print("🔐 Connecting to Salesforce using OAuth 2.0...")
+                import requests
+                
+                # Use refresh token to get access token
+                token_url = f"{self.instance_url}/services/oauth2/token"
+                response = requests.post(token_url, data={
+                    'grant_type': 'refresh_token',
+                    'client_id': self.client_id,
+                    'client_secret': self.client_secret,
+                    'refresh_token': self.refresh_token
+                })
+                
+                if response.status_code != 200:
+                    raise Exception(f"OAuth token refresh failed: {response.text}")
+                
+                token_data = response.json()
+                access_token = token_data['access_token']
+                instance_url = token_data.get('instance_url', self.instance_url)
+                
+                # Connect with access token
                 self.sf = Salesforce(
-                    username=self.username,
-                    password=self.password,
-                    security_token=self.security_token,
-                    domain=self.domain
+                    instance_url=instance_url,
+                    session_id=access_token
                 )
+                print("✅ Connected to Salesforce via OAuth")
+                return
+            except Exception as e:
+                error_msg = f"Salesforce OAuth connection error: {e}"
+                self.config_error = error_msg
+                print(f"⚠️  {error_msg}")
+                self.sf = None
+        
+        # Fall back to username/password method
+        missing_vars = []
+        if not self.username:
+            missing_vars.append('SALESFORCE_USERNAME')
+        if not self.password:
+            missing_vars.append('SALESFORCE_PASSWORD')
+        if not self.security_token:
+            missing_vars.append('SALESFORCE_SECURITY_TOKEN')
+        
+        if missing_vars:
+            error_msg = f"Missing required Salesforce credentials: {', '.join(missing_vars)}"
+            self.config_error = error_msg
+            if not self.allow_mock:
+                raise ConnectorConfigurationError(error_msg)
+            print(f"⚠️  {error_msg} - using mock data (allow_mock=True)")
+            return
+        
+        try:
+            print("🔐 Connecting to Salesforce using username/password...")
+            self.sf = Salesforce(
+                username=self.username,
+                password=self.password,
+                security_token=self.security_token,
+                domain=self.domain
+            )
+            print("✅ Connected to Salesforce via username/password")
         except Exception as e:
-            print(f"Salesforce connection error: {e}")
+            error_msg = f"Salesforce connection error: {e}"
+            self.config_error = error_msg
+            print(f"⚠️  {error_msg}")
             self.sf = None
     
     def query(self, query_str=None, **kwargs):
@@ -41,8 +111,12 @@ class SalesforceConnector:
             list: Query results as list of dictionaries
         """
         if not self.sf:
-            print("⚠️  Salesforce not connected, using mock data")
-            return self._get_mock_data()
+            if self.allow_mock:
+                print("⚠️  Salesforce not connected, using mock data (allow_mock=True)")
+                return self._get_mock_data()
+            else:
+                error_msg = self.config_error or "Salesforce not connected"
+                raise ConnectorConfigurationError(f"Cannot query Salesforce: {error_msg}")
         
         # Default query for opportunities if none provided
         if not query_str:
@@ -170,17 +244,77 @@ class SalesforceConnector:
                 WHERE IsClosed = false
             """
         return self.query(query)
+    
+    def is_health_cache_fresh(self) -> bool:
+        """Check if health cache is still fresh (within TTL)"""
+        if self._health_cache is None:
+            return False
+        current_time = time.time()
+        return (current_time - self._health_cache_time) < self._health_cache_ttl
+    
+    def get_cached_health(self) -> dict | None:
+        """Get cached health without performing check"""
+        return self._health_cache
+    
+    def check_health(self, force: bool = False) -> dict:
+        """Check if Salesforce connection is healthy (cached to avoid blocking I/O)"""
+        # Return cached result if still valid and not forcing
+        if not force and self.is_health_cache_fresh():
+            return self._health_cache or {"healthy": False, "error": "No cache available"}
+        
+        # Perform actual health check
+        current_time = time.time()
+        try:
+            if self.sf:
+                # Simple query to verify connection
+                self.sf.query("SELECT Id FROM Account LIMIT 1")
+                result = {"healthy": True, "error": None}
+            else:
+                result = {"healthy": False, "error": self.config_error or "Client not initialized"}
+        except Exception as e:
+            result = {"healthy": False, "error": str(e)}
+        
+        # Cache the result
+        self._health_cache = result
+        self._health_cache_time = current_time
+        return result
+    
+    def close(self):
+        """Clean up connection resources"""
+        if self.sf:
+            # simple-salesforce uses requests.Session internally
+            # Close the session to release connections
+            if hasattr(self.sf, 'session') and self.sf.session:
+                try:
+                    self.sf.session.close()
+                except Exception:
+                    pass  # Ignore errors during cleanup
+            self.sf = None
+        self._health_cache = None
+        self._health_cache_time = 0
+    
+    def reconnect(self):
+        """Attempt to reconnect to Salesforce"""
+        self.close()
+        self._connect()
 
 
-def create_salesforce_connector():
+def create_salesforce_connector(allow_mock=False):
     """Factory function to create Salesforce connector for DCL"""
-    connector = SalesforceConnector()
+    connector = SalesforceConnector(allow_mock=allow_mock)
     
     def query_fn(query_str=None, **kwargs):
         return connector.query(query_str, **kwargs)
     
-    return query_fn, {
+    status = "healthy" if connector.sf else ("mock" if allow_mock else "failed")
+    
+    metadata = {
         "type": "Salesforce CRM",
-        "status": "active" if connector.sf else "disconnected",
+        "status": status,
         "description": "Salesforce Sandbox - Opportunities, Accounts, Leads"
     }
+    
+    if connector.config_error:
+        metadata["error"] = connector.config_error
+    
+    return query_fn, metadata, connector

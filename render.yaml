@@ -1,18 +1,18 @@
 services:
   - type: web
-    name: revops-dcl-agent
-    env: python
-    runtime: python-3.11
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true"
+    name: pipeline-health-monitor
+    env: node
+    runtime: node
+    buildCommand: "cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt"
+    startCommand: "uvicorn api:app --host 0.0.0.0 --port=$PORT"
     envVars:
-      - key: SALESFORCE_USERNAME
+      - key: SALESFORCE_INSTANCE_URL
         sync: false
-      - key: SALESFORCE_PASSWORD
+      - key: SALESFORCE_CLIENT_ID
         sync: false
-      - key: SALESFORCE_SECURITY_TOKEN
+      - key: SALESFORCE_CLIENT_SECRET
         sync: false
-      - key: SALESFORCE_DOMAIN
+      - key: SALESFORCE_REFRESH_TOKEN
         sync: false
       - key: SUPABASE_URL
         sync: false
@@ -26,5 +26,7 @@ services:
         sync: false
       - key: SESSION_SECRET
         sync: false
-    healthCheckPath: /_stcore/health
+      - key: VITE_USE_PLATFORM_VIEWS
+        sync: false
+    healthCheckPath: /
     plan: starter

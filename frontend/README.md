@@ -1,73 +1,125 @@
-# React + TypeScript + Vite
+# Pipeline Health Monitor - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React SPA for real-time revenue operations monitoring, built with React 19, Vite 7, and TypeScript.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The frontend provides three main pages:
+- **Dashboard (Pipeline Health)**: Real-time pipeline metrics and opportunity tracking
+- **Operations (CRM Integrity)**: BANT validation and CRM data quality checks
+- **Connectivity (DCL Demo)**: Data Connectivity Layer with drill-to-details connector information
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 19**: Modern React with hooks and latest features
+- **TypeScript**: Full type safety across the application
+- **Vite 7**: Fast build tool with HMR
+- **Tailwind CSS v4**: Utility-first CSS with custom dark theme
+- **React Router v7**: Client-side routing
+- **Recharts**: Data visualization and charts
+- **Axios**: HTTP client for API requests
+- **Lucide React**: Icon library
 
-## Expanding the ESLint configuration
+## Key Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Drill-to-Details Connectivity
+Click any connector card on the Connectivity page to view:
+- **Overview Tab**: Connection status, configuration, capabilities
+- **Health Tab**: Real-time health checks with diagnostics
+- **Live Data Tab**: Up to 20 actual records from the data source
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Responsive Design
+- Mobile-first approach
+- Dark theme with teal accents (autonomOS Platform Theme)
+- Smooth transitions and hover effects
+- Accessible UI components
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### State Management
+- React hooks (useState, useEffect, useMemo)
+- Custom `useFetch` hook for data fetching
+- Component-level state management
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Development
+
+### Prerequisites
+- Node.js (latest LTS)
+- npm or yarn
+
+### Running Locally
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The app will be available at `http://localhost:5000`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Building for Production
+```bash
+npm run build
 ```
+
+### Running Tests
+```bash
+npm test
+```
+
+## Environment Variables
+
+Create a `.env` file in the frontend directory:
+
+```bash
+# LIVE mode: Use platform views with real backend
+# DEMO mode: Use mock data
+VITE_USE_PLATFORM_VIEWS=false
+```
+
+## Project Structure
+
+```
+frontend/
+├── src/
+│   ├── components/     # Reusable UI components
+│   │   ├── Card.tsx
+│   │   ├── ConnectorDetailModal.tsx
+│   │   └── ...
+│   ├── pages/         # Page components
+│   │   ├── Dashboard.tsx
+│   │   ├── Operations.tsx
+│   │   └── Connectivity.tsx
+│   ├── hooks/         # Custom React hooks
+│   │   └── useFetch.ts
+│   ├── lib/           # Utilities and helpers
+│   │   ├── aosClient.ts
+│   │   └── dataFetchers.ts
+│   └── App.tsx        # Main app component
+├── public/            # Static assets
+└── index.html         # Entry point
+```
+
+## API Integration
+
+The frontend connects to the FastAPI backend at `/api/*`:
+- `/api/dcl/connectors` - List all connectors
+- `/api/dcl/connectors/{name}` - Get detailed connector info
+- `/api/workflows/pipeline-health` - Pipeline health metrics
+- `/api/workflows/crm-integrity` - CRM validation results
+
+## Styling
+
+Uses Tailwind CSS v4 with custom configuration:
+- Dark background (`#0a0a0a`)
+- Teal accent color (`#00d4aa`)
+- Custom card and border styles
+- Responsive breakpoints
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+
+## License
+
+Proprietary

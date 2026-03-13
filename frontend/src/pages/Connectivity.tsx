@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Database, CheckCircle, AlertCircle } from 'lucide-react';
 import { useFetch } from '@/hooks/useFetch';
 import { Card } from '@/components/Card';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ConnectorDetailModal } from '@/components/ConnectorDetailModal';
 
 interface BackendConnector {
   name: string;
@@ -13,17 +14,24 @@ interface BackendConnector {
 
 export const Connectivity: React.FC = () => {
   const { data, loading, error } = useFetch<BackendConnector[]>('/api/dcl/connectors');
+  const [selectedConnector, setSelectedConnector] = useState<string | null>(null);
 
   const connectors = useMemo(() => {
     if (!data) return [];
-    return data.map((conn) => ({
-      id: conn.name,
-      name: conn.name.charAt(0).toUpperCase() + conn.name.slice(1),
-      type: conn.type,
-      status: conn.status.toLowerCase(),
-      last_sync: 'Just now',
-      records_synced: Math.floor(Math.random() * 1000) + 100
-    }));
+    return data.map((conn) => {
+      let displayName = conn.name.charAt(0).toUpperCase() + conn.name.slice(1);
+      if (conn.name.toLowerCase() === 'mongodb') {
+        displayName = 'MongoDB';
+      }
+      return {
+        id: conn.name,
+        name: displayName,
+        type: conn.type,
+        status: conn.status.toLowerCase(),
+        last_sync: 'Just now',
+        records_synced: Math.floor(Math.random() * 1000) + 100
+      };
+    });
   }, [data]);
 
   if (loading) return <LoadingSpinner />;
@@ -65,7 +73,11 @@ export const Connectivity: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {connectors?.map((connector) => (
-          <Card key={connector.id} className="hover:shadow-lg hover:shadow-teal-accent/20 transition-shadow">
+          <Card 
+            key={connector.id} 
+            className="hover:shadow-lg hover:shadow-teal-accent/20 transition-all cursor-pointer hover:scale-[1.02]"
+            onClick={() => setSelectedConnector(connector.id)}
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-teal-accent/10 rounded-lg">
@@ -97,6 +109,12 @@ export const Connectivity: React.FC = () => {
                 </span>
               </div>
             </div>
+            
+            <div className="mt-4 pt-4 border-t border-border-primary">
+              <span className="text-teal-accent text-sm font-medium hover:text-teal-hover transition">
+                View Details →
+              </span>
+            </div>
           </Card>
         ))}
         {connectors.length === 0 && (
@@ -105,6 +123,13 @@ export const Connectivity: React.FC = () => {
           </div>
         )}
       </div>
+
+      {selectedConnector && (
+        <ConnectorDetailModal
+          connectorName={selectedConnector}
+          onClose={() => setSelectedConnector(null)}
+        />
+      )}
     </div>
   );
 };

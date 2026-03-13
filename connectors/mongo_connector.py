@@ -5,24 +5,42 @@ Falls back to mock data if connection unavailable
 """
 
 import os
+import time
 import random
 from datetime import datetime, timedelta
+from connectors.exceptions import ConnectorConfigurationError
 
 class MongoConnector:
-    def __init__(self):
+    def __init__(self, allow_mock=False):
         self.connection_string = os.getenv('MONGODB_URI', '').strip()
+        self.database_name = os.getenv('MONGODB_DATABASE', '').strip()
+        self.allow_mock = allow_mock
         self.client = None
         self.db = None
         self.collection = None
         self.is_connected = False
         self.usage_data = {}
+        self.config_error = None
+        self._health_cache = None
+        self._health_cache_time = 0
+        self._health_cache_ttl = 60  # Cache health checks for 60 seconds
         
         self._connect()
     
     def _connect(self):
         """Attempt to connect to MongoDB"""
+        missing_vars = []
         if not self.connection_string:
-            print("⚠️  MongoDB connection string not found, using mock data")
+            missing_vars.append('MONGODB_URI')
+        if not self.database_name:
+            missing_vars.append('MONGODB_DATABASE')
+        
+        if missing_vars:
+            error_msg = f"Missing required MongoDB credentials: {', '.join(missing_vars)}"
+            self.config_error = error_msg
+            if not self.allow_mock:
+                raise ConnectorConfigurationError(error_msg)
+            print(f"⚠️  {error_msg} - using mock data (allow_mock=True)")
             return
         
         try:
@@ -41,17 +59,16 @@ class MongoConnector:
             self.client.admin.command('ping')
             
             # Set database and collection
-            # Extract database name from connection string or use default
-            db_name = os.getenv('MONGODB_DATABASE', 'dcl_demo')
-            self.db = self.client[db_name]
+            self.db = self.client[self.database_name]
             self.collection = self.db['usage_data']
             
             self.is_connected = True
-            print(f"✅ Connected to MongoDB: {db_name}")
+            print(f"✅ Connected to MongoDB: {self.database_name}")
             
         except Exception as e:
-            print(f"MongoDB connection error: {e}")
-            print("⚠️  Using mock data instead")
+            error_msg = f"MongoDB connection error: {e}"
+            self.config_error = error_msg
+            print(f"⚠️  {error_msg}")
             self.client = None
             self.db = None
             self.collection = None
@@ -80,10 +97,16 @@ class MongoConnector:
                 return results
             except Exception as e:
                 print(f"MongoDB query error: {e}")
-                return self.usage_data
+                if self.allow_mock:
+                    return self.usage_data
+                raise
         
-        # Return mock data if not connected
-        return self.usage_data
+        # Return mock data if not connected and mock allowed
+        if self.allow_mock:
+            return self.usage_data
+        else:
+            error_msg = self.config_error or "MongoDB not connected"
+            raise ConnectorConfigurationError(f"Cannot query MongoDB: {error_msg}")
     
     def get_usage_for_account(self, account_id):
         """Get usage data for a specific account"""
@@ -156,22 +179,77 @@ class MongoConnector:
                 ], random.randint(1, 5)),
                 "avg_session_duration": random.randint(5, 45)
             })
+    
+    def is_health_cache_fresh(self) -> bool:
+        """Check if health cache is still fresh (within TTL)"""
+        if self._health_cache is None:
+            return False
+        current_time = time.time()
+        return (current_time - self._health_cache_time) < self._health_cache_ttl
+    
+    def get_cached_health(self) -> dict:
+        """Get cached health without performing check"""
+        return self._health_cache
+    
+    def check_health(self, force: bool = False) -> dict:
+        """Check if MongoDB connection is healthy (cached to avoid blocking I/O)"""
+        # Return cached result if still valid and not forcing
+        if not force and self.is_health_cache_fresh():
+            return self._health_cache
+        
+        # Perform actual health check
+        current_time = time.time()
+        try:
+            if self.client is not None and self.db is not None:
+                # Ping database
+                self.client.admin.command('ping')
+                result = {"healthy": True, "error": None}
+            else:
+                result = {"healthy": False, "error": self.config_error or "Client not initialized"}
+        except Exception as e:
+            result = {"healthy": False, "error": str(e)}
+        
+        # Cache the result
+        self._health_cache = result
+        self._health_cache_time = current_time
+        return result
+    
+    def close(self):
+        """Clean up connection resources"""
+        if self.client:
+            try:
+                self.client.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
+            self.client = None
+            self.db = None
+            self.collection = None
+            self.is_connected = False
+        self._health_cache = None
+        self._health_cache_time = 0
+    
+    def reconnect(self):
+        """Attempt to reconnect to MongoDB"""
+        self.close()
+        self._connect()
 
 
-def create_mongo_connector():
+def create_mongo_connector(allow_mock=False):
     """Factory function to create MongoDB connector for DCL"""
-    connector = MongoConnector()
+    connector = MongoConnector(allow_mock=allow_mock)
     
     def query_fn(query_str=None, **kwargs):
         return connector.query(query_str, **kwargs)
     
-    # Show as active for demo - mock data is fully functional
-    status = "active"
-    type_label = "MongoDB" if connector.is_connected else "MongoDB (Mock)"
-    description = "Usage and engagement data" if connector.is_connected else "Usage and engagement data (simulated for demo)"
+    status = "healthy" if connector.is_connected else ("mock" if allow_mock else "failed")
     
-    return query_fn, {
-        "type": type_label,
+    metadata = {
+        "type": "MongoDB",
         "status": status,
-        "description": description
-    }, connector
+        "description": "Usage and engagement data"
+    }
+    
+    if connector.config_error:
+        metadata["error"] = connector.config_error
+    
+    return query_fn, metadata, connector

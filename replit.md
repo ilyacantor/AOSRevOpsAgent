@@ -1,249 +1,230 @@
 # Pipeline Health Monitor
 
-## Overview
+## What This Application Does
 
-This is a real-time revenue operations monitoring application that integrates CRM data (Salesforce), customer health metrics (Supabase/PostgreSQL), and user engagement data (MongoDB) through a unified interface. The application provides workflow-based analytics for CRM integrity validation (BANT framework) and pipeline health monitoring, with built-in alerting capabilities via Slack.
+This is a **Revenue Operations (RevOps) monitoring dashboard** that helps sales and operations teams track their sales pipeline health. It brings together data from three sources:
 
-The system uses a Data Connectivity Layer (DCL) architecture that acts as a router and abstraction layer, allowing workflows to query different data sources without knowing the underlying connection details or query languages. This creates a clean separation between data access and business logic.
+- **Salesforce** - Your CRM deals and opportunities
+- **Supabase** - Customer health scores and engagement metrics
+- **MongoDB** - User activity and usage analytics
+
+The application displays key performance indicators, identifies at-risk deals, validates CRM data quality, and can alert your team via Slack when issues arise.
+
+---
+
+## How to Use the Application
+
+### Dashboard (Pipeline Health)
+
+**What you can do here:**
+- View 8 key performance metrics at a glance (total pipeline value, win rate, average deal size, etc.)
+- See pipeline breakdown by stage with visual charts
+- Identify high-risk deals that need attention (risk score > 70)
+- Send Slack alerts to notify your team about at-risk opportunities
+- Filter by stalled deals and minimum risk score threshold
+- Access the **Quick Start Guide** (collapsible FAQ) for help
+
+**Key Metrics Explained:**
+- **Health Score** (0-100): Higher is better - measures overall deal quality
+- **Risk Score** (0-100): Lower is better - measures likelihood of deal problems
+- **Pipeline Velocity**: How fast deals move through your pipeline
+- **Stalled Deals**: Opportunities with no activity for 14+ days
+
+### Operations (CRM Integrity)
+
+**What you can do here:**
+- Validate CRM data quality using the BANT framework
+- Check if opportunities have complete information (Budget, Authority, Need, Timeline)
+- Review data completeness scores for your pipeline
+- Identify records with missing or incomplete fields
+- Filter validation results by risk level (Low, Medium, High)
+- Navigate through paginated results
+
+**BANT Framework:**
+- **Budget**: Does the opportunity have a defined budget?
+- **Authority**: Is the decision-maker identified?
+- **Need**: Is the customer's need clearly documented?
+- **Timeline**: Is there a target close date?
+
+### Connectivity (Data Sources)
+
+**What you can do here:**
+- See real-time status of all data source connections (healthy, degraded, or offline)
+- View whether connectors are using live credentials or mock fallback data
+- Click any connector card to view detailed information:
+  - **Overview tab**: Configuration and capabilities
+  - **Health tab**: Connection test results and error diagnostics
+  - **Live Data tab**: Sample records from the data source (up to 20 records when credentials configured)
+
+---
+
+## LIVE Mode vs DEMO Mode
+
+The application operates in two modes:
+
+| Mode | How It Works | When to Use |
+|------|--------------|-------------|
+| **LIVE** | Displays real data from your connected services | Production use with configured credentials |
+| **DEMO** | Displays realistic mock data | Demos, testing, or when credentials unavailable |
+
+**How modes are determined:**
+- **Dashboard & Operations**: Controlled by `VITE_USE_PLATFORM_VIEWS` environment variable (set to 'true' for platform data)
+- **Connectivity page**: Each connector's status reflects whether valid credentials are configured; without credentials, connectors use mock data fallback
+
+---
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+- Preferred communication style: Simple, everyday language
+- Dark theme with teal accents (autonomOS Platform Theme)
 
-## Recent Changes
+---
 
-**November 1, 2025 - Platform Views Disabled (UX Fix)**
-- **Issue**: Startup 500 errors when platform endpoints unavailable (all return 404)
-- **Root cause**: Platform attempt (404) → backend fallback (timing issue) → 500 error → retry works
-- **Fix**: Disabled `VITE_USE_PLATFORM_VIEWS` flag in `frontend/.env` to avoid platform attempts
-- **Impact**: Clean startup with no errors - app goes directly to backend API via Vite proxy
-- **Status**: Platform integration code preserved and ready; flag can be re-enabled when AOS endpoints are deployed
-- **Result**: No more startup errors, smooth data loading on first attempt
+## Project Structure
 
-**October 31, 2025 - Agent-Kit Platform Integration (Feature Flagged)**
-- **Architecture**: Added AosClient library supporting platform Views/Intents integration via agent-kit
-- **Feature Flag**: `VITE_USE_PLATFORM_VIEWS` environment variable enables staged migration (default: OFF)
-- **Data Adapters**: Created normalization layer transforming platform responses to existing UI shapes
-  - `adaptOpportunitiesResponse()` maps platform opportunities to `BackendResponse` format
-  - `adaptValidationsResponse()` maps platform accounts to `ValidationResponse` format
-- **Platform Fetchers**: `fetchPipelineHealth()` and `fetchCrmIntegrity()` use AosClient when flag enabled
-- **Intent Helpers**: `sendIntent()` with idempotency key support for alert operations
-- **Debug Tools**: `DebugTracePanel` component displays trace IDs in development builds only
-- **Error Handling**: Non-blocking toasts for all platform errors, preserving user experience
-- **UI Integration**: Dashboard and Operations pages accept optional custom fetchers from useFetch hook
-- **Zero Regressions**: All existing UI (navbar, dropdowns, charts) preserved; legacy axios workflows active by default
-- **TypeScript**: Fixed verbatimModuleSyntax compliance with type-only imports throughout
-- **Files Added**: `aosClient.ts`, `adapters.ts`, `platformFetchers.ts`, `intentHelpers.ts`, `DebugTracePanel.tsx`
-- **Architect Approved**: PASS with recommendation to add smoke tests for both flag states
+```
+/
+├── api.py                 # FastAPI backend server
+├── dcl_core.py           # Data Connectivity Layer core
+├── connectors/           # Data source connectors
+│   ├── salesforce_connector.py
+│   ├── supabase_connector.py
+│   └── mongodb_connector.py
+├── workflows/            # Business logic workflows
+├── frontend/             # React SPA
+│   ├── src/
+│   │   ├── pages/        # Dashboard, Operations, Connectivity
+│   │   ├── components/   # Reusable UI components
+│   │   └── lib/          # Data fetching utilities
+│   └── dist/             # Production build output
+├── roadmap_revops.md     # Feature roadmap and limitations
+└── DEPLOYMENT.md         # Deployment instructions
+```
 
-**October 31, 2025 - Critical Supabase Connection Fix**
-- **Fixed table name mismatch**: Changed `customer_health` → `salesforce_health_scores` throughout codebase
-- **Root cause**: Code queried non-existent `customer_health` table, causing all health scores to return 0
-- **Impact**: Dashboard now displays real health data (average 75.3, range 15-88 across 16 opportunities)
-- **Files updated**: `workflows/pipeline_health.py`, `connectors/supabase_connector.py`
-- **Result**: Scatter plot now shows meaningful patterns - opportunities spread across both health (15-88) and risk (78-100) dimensions
-- **Remaining issue**: MongoDB Atlas connection still unavailable (SSL handshake errors), system uses defaults with warning banners
+---
 
-**October 30, 2025 - Complete Feature Restoration (Dashboard & Operations)**
-- **Dashboard (Pipeline Health)**: Restored full feature parity with Streamlit version
-  - Added Risk Analysis charts: Health vs Risk scatter plot and Risk Score Distribution histogram
-  - Added missing metrics: High Risk Deals and Avg Risk Score (now 8 total metrics)
-  - Implemented Alert Management system with Slack integration for high-risk deals
-  - Added interactive filtering: "Show stalled deals only" checkbox and risk score slider (0-100)
-  - Enhanced opportunities table with "Is Stalled" badges and 7 total columns
-  - All charts use Recharts with autonomOS dark theme (#0A2540 background)
-- **Operations (CRM Integrity)**: Restored full feature parity with Streamlit version
-  - Added Validation Analysis charts: Risk Level Distribution pie chart and Validation Status by Stage stacked bar
-  - Fixed metrics: Total Opportunities, Valid Opportunities (with % badge), High Risk (replaced "Invalid")
-  - Implemented Risk Level filter with multiselect checkboxes (HIGH, MEDIUM, LOW)
-  - Enhanced validation table with 7 columns: Account Name, Amount, Risk Level badges, etc.
-  - Added Human-in-the-Loop Escalation section with Slack alert integration
-  - Implemented expandable escalation cards showing issues and action required
-  - Updated backend to include risk_level, account_name, and amount in validation results
-- Both pages now have 100% feature completeness compared to original Streamlit implementation
-- All interactive features tested and verified via end-to-end Playwright tests
+## Technical Architecture
 
-**October 30, 2025 - Frontend Migration to React**
-- Migrated from Streamlit to modern React 19 + Vite 7 + TypeScript stack
-- Created complete React component library (Navbar, Card, MetricCard, LoadingSpinner)
-- Implemented three main pages: Dashboard, Operations, Connectivity
-- Upgraded to Tailwind CSS v4 with CSS-based @theme configuration
-- Fixed Vite 7 allowedHosts configuration for Replit deployment (`.replit.dev`, `.repl.co`)
-- Configured FastAPI backend on port 8000 with workflow endpoints
-- Configured Vite development server on port 5000 with API proxy
-- Updated PostCSS to use `@tailwindcss/postcss` plugin for v4 compatibility
-- Applied autonomOS design system across entire UI (black background, teal accents, enterprise blue cards)
+### Data Flow
 
-## UI Design & Color Palette
+1. **Dashboard & Operations pages** → Platform views (AosClient) or mock data services
+2. **Connectivity page** → Backend DCL API (`/api/dcl/connectors`)
 
-**Design System: AutonomOS Platform Theme**
+Note: The backend DCL connectors are fully implemented but currently only used by the Connectivity page for connector testing and monitoring.
 
-The application uses a dark, professional, and futuristic aesthetic with consistent teal accents matching the autonomOS platform design system.
+### Backend (FastAPI + Python)
 
-**Primary Colors**
-- **Teal/Cyan (Primary Accent)**: `#0BCAD9` - Icons, highlights, interactive elements, hover states, borders, active navigation items
-- **Black (Main Background)**: `#000000` - Primary page background and navigation bar
-- **Enterprise Data Blue**: `#0A2540` - Card backgrounds, chart backgrounds, metric containers
-- **Blue Border**: `#1E4A6F` - Card borders, container outlines
+- **Data Connectivity Layer (DCL)**: Abstraction layer managing all data source connections
+- **Connectors**: Salesforce (OAuth 2.0), Supabase, MongoDB - each with mock fallbacks
+- **Health Checks**: Cached status with 60-second TTL
+- **API Endpoints**:
+  - `GET /api/dcl/connectors` - List all connectors with status
+  - `GET /api/dcl/connectors/{name}` - Connector details with live data
+  - `GET /api/health` - Application health check
 
-**Text Colors**
-- **Primary Text**: `#FFFFFF` - Headers, titles, main content
-- **Secondary Text**: `#A0AEC0` - Subtitles, descriptions, labels
-- **Accent Text**: `#0BCAD9` - Links, highlighted text, active states
+### Frontend (React 19 + TypeScript)
 
-**Visual Effects**
-- **Glow Shadows**: Teal shadows with opacity (e.g., `0 0 12px rgba(11, 202, 217, 0.3)`) on active/hover states
-- **Subtle Shadows**: Light teal shadows on cards (e.g., `0 4px 12px rgba(11, 202, 217, 0.1)`)
-- **Hover Transitions**: All interactive elements use smooth transitions (`transition: all 0.2s ease`)
-- **Border Highlights**: Interactive elements show teal borders on hover
+- **Vite 7** for development and builds
+- **React Router v7** for navigation
+- **Tailwind CSS v4** for styling
+- **Recharts** for data visualization
+- **Axios** for API calls
 
-**Navigation Design**
-- Horizontal top navigation bar (no sidebar)
-- Three main sections: Dashboard (Pipeline Health), Operations (CRM Integrity), Connectivity (DCL Demo)
-- Active tab indicators with teal accent color and glow effect
-- Sticky navigation with shadow for depth
+---
 
-**Layout Characteristics**
-- Dark mode throughout
-- Clean, spacious layouts with proper padding
-- Minimalist design focused on data visualization
-- Mobile-first responsive design principles
-- Consistent use of teal accents to guide user attention to interactive elements
+## Configuration
 
-## System Architecture
+### Required Secrets (Replit Secrets)
 
-### Core Architecture Pattern
+For **LIVE mode** with real data, configure these secrets:
 
-**Data Connectivity Layer (DCL)**
-- **Problem**: Applications need to query multiple data sources (Salesforce, PostgreSQL, MongoDB) with different query languages and connection patterns
-- **Solution**: Unified connector registry pattern where data sources register query functions with the DCL core
-- **Design**: `dcl_core.py` maintains a registry of named connectors, each providing a standardized `query()` interface
-- **Benefits**: Workflows remain agnostic to data source implementation; connectors can be swapped or mocked without changing business logic
+**Salesforce (choose one authentication method):**
 
-### Frontend Architecture
+*Option A - OAuth 2.0 (Preferred):*
+- `SALESFORCE_INSTANCE_URL`
+- `SALESFORCE_CLIENT_ID`
+- `SALESFORCE_CLIENT_SECRET`
+- `SALESFORCE_REFRESH_TOKEN`
 
-**React SPA** (`frontend/`)
-- Modern single-page application built with React 19, Vite 7, and TypeScript
-- Three main pages: Dashboard (Pipeline Health), Operations (CRM Integrity), Connectivity (DCL Demo)
-- Component library: Navbar, Card, MetricCard, LoadingSpinner
-- State management via React hooks (useState, useEffect, useMemo)
-- Data fetching with custom useFetch hook and Axios
-- Responsive design with Tailwind CSS v4 (CSS-based theme configuration)
-- Interactive charts using Recharts library
-- React Router v7 for client-side routing
+*Option B - Username/Password (Legacy):*
+- `SALESFORCE_DOMAIN` (e.g., 'test' for sandbox)
+- `SALESFORCE_USERNAME`
+- `SALESFORCE_PASSWORD`
+- `SALESFORCE_SECURITY_TOKEN`
 
-**Legacy Streamlit Interface** (`app.py`) - Deprecated
-- Original Streamlit dashboard remains for reference
-- Replaced by modern React frontend for better performance and UX
-- Session state management for DCL instance and connector initialization
-- Uses Plotly for data visualization (charts and graphs)
+**Supabase:**
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
 
-### Backend Architecture
+**MongoDB:**
+- `MONGODB_URI`
+- `MONGODB_DATABASE`
 
-**Connector Pattern**
-- Each data source implements a connector class with a standardized query interface
-- Connectors handle authentication, connection management, and error fallback
-- Mock data fallback when external services are unavailable
-- Connector factory functions return both query function and metadata
+**Optional:**
+- `SLACK_WEBHOOK_URL` - For Slack alerts
+- `VITE_USE_PLATFORM_VIEWS` - Set to 'true' for LIVE mode on Dashboard/Operations
 
-**Workflow Pattern**
-- Business logic encapsulated in workflow classes
-- Each workflow receives DCL instance as dependency
-- Workflows orchestrate multi-source data queries and joins
-- Two primary workflows:
-  - `CRMIntegrityWorkflow`: BANT validation with stage-based rules
-  - `PipelineHealthWorkflow`: Multi-source data joining for pipeline analysis
+### Without Secrets
 
-### Data Storage Solutions
+The application works without any secrets configured:
+- **Dashboard & Operations**: Display mock data when `VITE_USE_PLATFORM_VIEWS` is not set to 'true'
+- **Connectivity page**: Backend connectors fall back to realistic mock data when credentials are missing
 
-**Multi-source Strategy**
-- **Salesforce (CRM)**: Primary source for opportunity and account data
-  - SOQL queries for structured CRM data
-  - Sandbox environment support via domain configuration
-- **Supabase/PostgreSQL**: Customer health scoring system
-  - `salesforce_health_scores` table with salesforce_id (mapped to account_id), health_score, and metadata
-  - Indexed for fast lookups by salesforce_id/account_id
-- **MongoDB (Mock)**: User engagement and usage analytics
-  - In-memory mock implementation for demonstration
-  - Tracks login patterns, session data, and feature usage
+---
 
-### Authentication & Authorization
+## Running the Application
 
-**Environment-based Credentials**
-- Salesforce: Username, password, security token, and domain configuration
-- Supabase: URL and API key authentication
-- Slack: Webhook URL for alerting
-- No user authentication implemented (demo application)
+### Development
 
-### Design Patterns
+Two workflows run simultaneously:
+- **Frontend**: `cd frontend && npm run dev` (port 5000)
+- **Backend API**: `uvicorn api:app --host 0.0.0.0 --port 8000 --reload`
 
-**Registry Pattern** (DCL Core)
-- Central registry maintains connector name → query function mappings
-- Metadata stored alongside connectors for introspection
-- Runtime connector registration during initialization
+### Production Deployment
 
-**Factory Pattern** (Connectors)
-- `create_salesforce_connector()`, `create_supabase_connector()` factory functions
-- Returns tuple of (query_function, metadata_dict)
-- Encapsulates connection logic and error handling
+1. Build frontend: `cd frontend && npm run build`
+2. Run unified server: `uvicorn api:app --host 0.0.0.0 --port 5000`
 
-**Strategy Pattern** (Schema Mapping)
-- `SchemaMapper` utility provides field mapping between data sources
-- Unified schema definitions for account, opportunity, health, and usage entities
-- Source-specific mappings translate native fields to unified schema
+FastAPI serves both the API (`/api/*`) and the React frontend (`/*`) from a single process.
 
-**Graceful Degradation**
-- All connectors implement mock data fallback
-- Application remains functional when external services unavailable
-- Error messages logged but don't crash workflows
+---
 
-## External Dependencies
+## Current Limitations
 
-### Third-party Services
+- **No user authentication** - This is a demo/internal tool
+- **Dashboard/Operations** use platform views or mock data, not backend DCL
+- **Live connector data** requires configured credentials and environment testing
+- **No historical data tracking** - Shows current snapshot only
+- **No data export** - View-only interface
 
-**Salesforce API**
-- Integration: `simple-salesforce` Python library
-- Purpose: CRM data source for opportunities and accounts
-- Authentication: Username/password with security token
-- Environment: Sandbox support (domain='test')
+See `roadmap_revops.md` for detailed limitations and future development plans.
 
-**Supabase PostgreSQL**
-- Integration: `supabase-py` client library
-- Purpose: Customer health score storage and retrieval
-- Schema: `salesforce_health_scores` table with indexed salesforce_id lookups (mapped to account_id in code)
-- Authentication: URL + API key
+---
 
-**Slack Webhooks**
-- Integration: Direct HTTP POST requests
-- Purpose: Human-in-the-loop escalation alerts
-- Configuration: Webhook URL via environment variable
-- Format: JSON payload with message formatting
+## Useful Commands
 
-### Key Python Libraries
+```bash
+# Start frontend dev server
+cd frontend && npm run dev
 
-- **streamlit**: Web application framework and UI
-- **pandas**: Data manipulation and DataFrame operations
-- **plotly**: Interactive data visualization (express and graph_objects)
-- **simple-salesforce**: Salesforce API client
-- **supabase**: PostgreSQL database client for Supabase
-- **requests**: HTTP client for Slack webhook calls
+# Start backend server
+uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
-### Database Schema
+# Build for production
+cd frontend && npm run build
 
-**Supabase `salesforce_health_scores` table**:
-- `id`: BIGSERIAL primary key
-- `salesforce_id`: TEXT unique, indexed (foreign key to Salesforce Account.Id, mapped to account_id in connector)
-- `health_score`: INTEGER with check constraint (0-100)
-- `details`: TEXT for contextual information
-- `last_updated`: TIMESTAMP with automatic NOW() default
+# Test backend health
+curl http://localhost:8000/api/health
 
-### Configuration Requirements
+# List connectors
+curl http://localhost:8000/api/dcl/connectors
+```
 
-Required environment variables:
-- `SALESFORCE_USERNAME`: Salesforce login username
-- `SALESFORCE_PASSWORD`: Salesforce login password
-- `SALESFORCE_SECURITY_TOKEN`: Salesforce security token
-- `SALESFORCE_DOMAIN`: 'test' for sandbox, 'login' for production
-- `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_KEY`: Supabase API key (anon or service role)
-- `SLACK_WEBHOOK_URL`: Incoming webhook URL for alerts (optional)
+---
+
+## Related Documentation
+
+- `DEPLOYMENT.md` - Step-by-step deployment guide
+- `roadmap_revops.md` - Features, limitations, and future roadmap
+- `SUPABASE_SETUP.md` - Database schema setup
+- `frontend/README.md` - Frontend-specific documentation
