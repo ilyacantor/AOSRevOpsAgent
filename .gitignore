@@ -4,3 +4,4 @@ node_modules/
 # Python bytecode
 __pycache__/
 *.pyc
+.env.development
