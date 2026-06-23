@@ -5,3 +5,7 @@ node_modules/
 __pycache__/
 *.pyc
 .env.development
+
+# Local state + Replit cache/state (never commit — regeneratable)
+.local/
+.cache/replit/
